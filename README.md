@@ -9,5 +9,7 @@ NUT.Net is inspired by the [WINNut](https://github.com/gawindx/WinNUT-Client) cl
 
 # References
 [Network UPS Tools GitHub project](https://github.com/networkupstools/nut/)
+
 [jNut - A NUT client written in Java](https://github.com/networkupstools/jNut)
+
 [WinNUT Client GitHub project](https://github.com/gawindx/WinNUT-Client)
