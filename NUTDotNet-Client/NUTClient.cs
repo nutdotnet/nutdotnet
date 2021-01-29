@@ -67,10 +67,11 @@ namespace NUTDotNetClient
             {
                 /* Access denied error will be thrown right off the bat if the host isn't allowed.
                 Specify a friendly error and pass along. */
-                if (nutEx.ErrorCode == NUTException.Error.ACCESSDENIED)
+                if (nutEx.ErrorCode == Response.Error.ACCESSDENIED)
                 {
-                    throw new NUTException(nutEx.RawError,
-                        "Access is denied. This host, or username/password may not be allowed to run this command.");
+                    throw new Exception(
+                        "Access is denied. This host, or username/password may not be allowed to run this command.",
+                        nutEx);
                 }
             }
         }
@@ -105,7 +106,7 @@ namespace NUTDotNetClient
                 responseReceived = DateTime.Now;
             }
 
-            return new Response(querySent, responseReceived, response);
+            return new Response(response, querySent, responseReceived);
         }
     }
 }
