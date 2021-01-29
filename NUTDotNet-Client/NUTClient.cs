@@ -12,8 +12,17 @@ namespace NUTDotNetClient
         public string Username { get; }
         private string Password;
         private TcpClient client;
+        public bool IsConnected
+        {
+            get
+            {
+                if (client is null)
+                    return false;
+                else
+                    return client.Connected;
+            }
+        }
 
-        public bool IsConnected { get; private set; }
         public string ServerVersion { get; private set; }
         public string ProtocolVersion { get; private set; }
 
@@ -26,7 +35,6 @@ namespace NUTDotNetClient
         /// <param name="port"></param>
         public NUTClient(string host, string username = "", string password = "", ushort port = 3493)
         {
-            IsConnected = false;
             Host = host;
             Port = port;
             Username = username;
@@ -39,7 +47,6 @@ namespace NUTDotNetClient
                 Disconnect();
 
             client = new TcpClient(Host, Port);
-            IsConnected = true;
             return;
         }
 
@@ -48,7 +55,6 @@ namespace NUTDotNetClient
             if (IsConnected)
             {
                 client.Close();
-                IsConnected = false;
             }
         }
 
