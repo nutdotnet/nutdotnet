@@ -47,7 +47,8 @@ namespace NUTDotNetClient
                 Disconnect();
 
             client = new TcpClient(Host, Port);
-            return;
+            // Verify that the client is allowed access by attempting to get basic data.
+            GetBasicDetails();
         }
 
         public void Disconnect()
@@ -67,7 +68,9 @@ namespace NUTDotNetClient
             try
             {
                 Response getServerVersion = SendQuery("VER");
-                //getServerVersion.
+                ServerVersion = getServerVersion.Data;
+                Response getProtocolVersion = SendQuery("NETVER");
+                ProtocolVersion = getProtocolVersion.Data;
             }
             catch (NUTException nutEx)
             {
