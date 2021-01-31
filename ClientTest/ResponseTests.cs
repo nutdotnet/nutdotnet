@@ -2,7 +2,7 @@
 using System;
 using Xunit;
 
-namespace ClientTest
+namespace Testing
 {
     public class ResponseTests
     {
