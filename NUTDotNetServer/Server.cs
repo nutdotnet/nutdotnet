@@ -37,7 +37,7 @@ namespace NUTDotNetServer
         }
 
         /// <summary>
-        /// Start the listener and begin looping to accept and handle clients.
+        /// Start the listener and begin looping to accept clients.
         /// </summary>
         public void BeginListening()
         {
@@ -49,20 +49,42 @@ namespace NUTDotNetServer
             {
                 // Wait for a connection.
                 TcpClient newClient = tcpListener.AcceptTcpClient();
-                /* NetworkStream clientNetStream = newClient.GetStream();
-                StreamReader streamReader = new StreamReader(clientNetStream, PROTO_ENCODING);
-                StreamWriter streamWriter = new StreamWriter(clientNetStream, PROTO_ENCODING);
+                HandleNewClient(newClient);
 
-                while (newClient.Connected)
-                {
-                    string readQuery = streamReader.ReadLine();
-                }*/
-                // Wait for a bit.
-                System.Threading.Thread.Sleep(500);
                 newClient.Close();
                 break;
             }
             tcpListener.Stop();
+        }
+
+        public void HandleNewClient(TcpClient newClient)
+        {
+            NetworkStream clientNetStream = newClient.GetStream();
+            StreamReader streamReader = new StreamReader(clientNetStream, PROTO_ENCODING);
+            StreamWriter streamWriter = new StreamWriter(clientNetStream, PROTO_ENCODING);
+
+            // Enter into a loop of listening a responding to queries.
+            string readLine;
+            while (newClient.Connected && !((readLine = streamReader.ReadLine()) is null))
+            {
+                if (readLine.Equals("VER"))
+                {
+                    streamWriter.WriteLine(ServerVersion);
+                }
+                else if (readLine.Equals("NETVER"))
+                {
+                    streamWriter.WriteLine(NETVER);
+                }
+                else if (readLine.Equals("LOGOUT"))
+                {
+                    streamWriter.WriteLine("OK Goodbye");
+                    break;
+                }
+                else
+                {
+                    streamWriter.WriteLine("UNKNOWN-COMMAND");
+                }
+            }
         }
     }
 }
