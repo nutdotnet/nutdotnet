@@ -5,7 +5,7 @@ VisualStudioVersion = 16.0.30907.101
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NUTDotNetClient", "NUTDotNet-Client\NUTDotNetClient.csproj", "{536AB832-D67B-46DD-B748-BF144A2DAD29}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Testing", "ClientTest\Testing.csproj", "{7F3DFA8A-7EEE-4A50-A23A-9F3E77D5897A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Testing", "Testing\Testing.csproj", "{7F3DFA8A-7EEE-4A50-A23A-9F3E77D5897A}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{34CC86D2-CE11-4A70-A99F-E9BE8C9A3CED}"
 	ProjectSection(SolutionItems) = preProject

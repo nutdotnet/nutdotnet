@@ -57,7 +57,7 @@ namespace NUTDotNetServer
             tcpListener.Stop();
         }
 
-        public void HandleNewClient(TcpClient newClient)
+        void HandleNewClient(TcpClient newClient)
         {
             NetworkStream clientNetStream = newClient.GetStream();
             StreamReader streamReader = new StreamReader(clientNetStream, PROTO_ENCODING);
@@ -78,12 +78,13 @@ namespace NUTDotNetServer
                 else if (readLine.Equals("LOGOUT"))
                 {
                     streamWriter.WriteLine("OK Goodbye");
-                    break;
                 }
                 else
                 {
                     streamWriter.WriteLine("UNKNOWN-COMMAND");
                 }
+
+                streamWriter.Flush();
             }
         }
     }
