@@ -20,6 +20,7 @@ namespace Testing
         public ServerFixture()
         {
             testServer = new Server();
+            testServer.AuthorizedClients.Add(IPAddress.Loopback);
             serverTask = new Task(() => testServer.BeginListening());
             serverTask.Start();
             testClient = new TcpClient("localhost", testServer.ListenPort);
@@ -89,7 +90,37 @@ namespace Testing
             sw.WriteLine("TRY UNKNOWN COMMAND");
             sw.Flush();
             string result = sr.ReadLine();
-            Assert.Equal("UNKNOWN-COMMAND", result);
+            Assert.Equal("ERR UNKNOWN-COMMAND", result);
+        }
+
+        /// <summary>
+        /// Try to reestablish the connection after removing localhost as authenticated, and check results.
+        /// </summary>
+        [Fact]
+        public void TryUnauthedClient()
+        {
+            // Prepare an entirely new server and client for this test.
+            Server unauthedServer = new Server(3494);
+            Task unauthServerTask = new Task(() => unauthedServer.BeginListening());
+            unauthServerTask.Start();
+            TcpClient unauthedClient = new TcpClient("localhost", unauthedServer.ListenPort);
+
+            Stream baseStream = unauthedClient.GetStream();
+            StreamReader sr = new StreamReader(baseStream);
+            StreamWriter sw = new StreamWriter(baseStream);
+
+            sw.WriteLine("VER");
+            sw.Flush();
+            string result = sr.ReadLine();
+            Assert.Equal("ERR ACCESS-DENIED", result);
+            sw.WriteLine("LOGOUT");
+            sw.Flush();
+            result = sr.ReadLine();
+            Assert.Equal("OK Goodbye", result);
+
+            // Cleanup.
+            unauthedClient.Close();
+            unauthServerTask.Wait();
         }
     }
 }
