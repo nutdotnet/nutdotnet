@@ -49,16 +49,23 @@ namespace NUTDotNetServer
             if (tcpListener is null)
                 throw new InvalidOperationException("TcpListener is null, cannot begin listening.");
 
+            List<TcpClient> connectedClients = new List<TcpClient>();
+            // Wait until the first client has connected, before we shutdown.
+            bool firstStart = true;
             tcpListener.Start();
-            while (true)
+
+            while (firstStart && connectedClients.Count > 0)
             {
                 // Wait for a connection.
                 TcpClient newClient = tcpListener.AcceptTcpClient();
+                firstStart = false;
+                connectedClients.Add(newClient);
                 HandleNewClient(newClient);
 
                 newClient.Close();
-                break;
+                connectedClients.Remove(newClient);
             }
+
             tcpListener.Stop();
         }
 
