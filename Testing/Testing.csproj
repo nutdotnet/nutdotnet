@@ -4,6 +4,10 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
 
     <IsPackable>false</IsPackable>
+
+    <AssemblyVersion>1.0.16.21039</AssemblyVersion>
+
+    <FileVersion>1.0.16.21039</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -21,6 +25,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\NUTDotNet-Client\NUTDotNetClient.csproj" />
+    <ProjectReference Include="..\NUTDotNetServer\NUTDotNetServer.csproj" />
   </ItemGroup>
 
 </Project>

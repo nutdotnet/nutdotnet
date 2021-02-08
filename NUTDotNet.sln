@@ -5,12 +5,14 @@ VisualStudioVersion = 16.0.30907.101
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NUTDotNetClient", "NUTDotNet-Client\NUTDotNetClient.csproj", "{536AB832-D67B-46DD-B748-BF144A2DAD29}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClientTest", "ClientTest\ClientTest.csproj", "{7F3DFA8A-7EEE-4A50-A23A-9F3E77D5897A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Testing", "Testing\Testing.csproj", "{7F3DFA8A-7EEE-4A50-A23A-9F3E77D5897A}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{34CC86D2-CE11-4A70-A99F-E9BE8C9A3CED}"
 	ProjectSection(SolutionItems) = preProject
 		.editorconfig = .editorconfig
 	EndProjectSection
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NUTDotNetServer", "NUTDotNetServer\NUTDotNetServer.csproj", "{6F262F4A-8FD4-44DB-A6BE-52340B75ADB7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -26,6 +28,10 @@ Global
 		{7F3DFA8A-7EEE-4A50-A23A-9F3E77D5897A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7F3DFA8A-7EEE-4A50-A23A-9F3E77D5897A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7F3DFA8A-7EEE-4A50-A23A-9F3E77D5897A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6F262F4A-8FD4-44DB-A6BE-52340B75ADB7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6F262F4A-8FD4-44DB-A6BE-52340B75ADB7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6F262F4A-8FD4-44DB-A6BE-52340B75ADB7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6F262F4A-8FD4-44DB-A6BE-52340B75ADB7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
