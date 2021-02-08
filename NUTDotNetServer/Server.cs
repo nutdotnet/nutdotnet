@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -14,6 +15,9 @@ namespace NUTDotNetServer
         private static readonly Encoding PROTO_ENCODING = Encoding.ASCII;
 
         public IPAddress ListenAddress { get; }
+        // List of clients allowed to execute commands. Even unauthorized clients are allowed to establish
+        // a connection.
+        public List<IPAddress> AuthorizedClients { get; set; }
         public ushort ListenPort { get; }
         public string Username { get; }
         private string Password;
@@ -32,6 +36,7 @@ namespace NUTDotNetServer
         {
             ListenPort = DEFAULT_PORT;
             ListenAddress = IPAddress.Any;
+            AuthorizedClients = new List<IPAddress>();
 
             tcpListener = new TcpListener(IPAddress.Any, ListenPort);
         }
@@ -59,6 +64,14 @@ namespace NUTDotNetServer
 
         void HandleNewClient(TcpClient newClient)
         {
+            // See if this client will be allowed to execute commands.
+            bool isAuthorized = true;
+            if (AuthorizedClients.Count > 0)
+            {
+                IPEndPoint clientEndpoint = (IPEndPoint)newClient.Client.RemoteEndPoint;
+                isAuthorized = AuthorizedClients.Contains(clientEndpoint.Address);
+            }
+
             NetworkStream clientNetStream = newClient.GetStream();
             StreamReader streamReader = new StreamReader(clientNetStream, PROTO_ENCODING);
             StreamWriter streamWriter = new StreamWriter(clientNetStream, PROTO_ENCODING);
@@ -67,21 +80,29 @@ namespace NUTDotNetServer
             string readLine;
             while (newClient.Connected && !((readLine = streamReader.ReadLine()) is null))
             {
-                if (readLine.Equals("VER"))
+                // If the client is not authorized, then any command besides LOGOUT will result in an A.D error.
+                if (!readLine.Equals("LOGOUT") & !isAuthorized)
                 {
-                    streamWriter.WriteLine(ServerVersion);
-                }
-                else if (readLine.Equals("NETVER"))
-                {
-                    streamWriter.WriteLine(NETVER);
-                }
-                else if (readLine.Equals("LOGOUT"))
-                {
-                    streamWriter.WriteLine("OK Goodbye");
+                    streamWriter.WriteLine("ERR ACCESS-DENIED");
                 }
                 else
                 {
-                    streamWriter.WriteLine("UNKNOWN-COMMAND");
+                    if (readLine.Equals("VER"))
+                    {
+                        streamWriter.WriteLine(ServerVersion);
+                    }
+                    else if (readLine.Equals("NETVER"))
+                    {
+                        streamWriter.WriteLine(NETVER);
+                    }
+                    else if (readLine.Equals("LOGOUT"))
+                    {
+                        streamWriter.WriteLine("OK Goodbye");
+                    }
+                    else
+                    {
+                        streamWriter.WriteLine("ERR UNKNOWN-COMMAND");
+                    }
                 }
 
                 streamWriter.Flush();
