@@ -32,9 +32,9 @@ namespace NUTDotNetServer
             }
         }
 
-        public Server()
+        public Server(ushort listenPort = DEFAULT_PORT)
         {
-            ListenPort = DEFAULT_PORT;
+            ListenPort = listenPort;
             ListenAddress = IPAddress.Any;
             AuthorizedClients = new List<IPAddress>();
 
@@ -54,7 +54,7 @@ namespace NUTDotNetServer
             bool firstStart = true;
             tcpListener.Start();
 
-            while (firstStart && connectedClients.Count > 0)
+            while (firstStart || connectedClients.Count > 0)
             {
                 // Wait for a connection.
                 TcpClient newClient = tcpListener.AcceptTcpClient();
@@ -72,12 +72,8 @@ namespace NUTDotNetServer
         void HandleNewClient(TcpClient newClient)
         {
             // See if this client will be allowed to execute commands.
-            bool isAuthorized = true;
-            if (AuthorizedClients.Count > 0)
-            {
-                IPEndPoint clientEndpoint = (IPEndPoint)newClient.Client.RemoteEndPoint;
-                isAuthorized = AuthorizedClients.Contains(clientEndpoint.Address);
-            }
+            IPEndPoint clientEndpoint = (IPEndPoint)newClient.Client.RemoteEndPoint;
+            bool isAuthorized = AuthorizedClients.Contains(clientEndpoint.Address);
 
             NetworkStream clientNetStream = newClient.GetStream();
             StreamReader streamReader = new StreamReader(clientNetStream, PROTO_ENCODING);
