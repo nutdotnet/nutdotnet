@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30907.101
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NUTDotNetClient", "NUTDotNet-Client\NUTDotNetClient.csproj", "{536AB832-D67B-46DD-B748-BF144A2DAD29}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NUTDotNetClient", "NUTDotNetClient\NUTDotNetClient.csproj", "{536AB832-D67B-46DD-B748-BF144A2DAD29}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Testing", "Testing\Testing.csproj", "{7F3DFA8A-7EEE-4A50-A23A-9F3E77D5897A}"
 EndProject
