@@ -44,7 +44,7 @@ namespace NUTDotNetClient
         public void Connect()
         {
             if (IsConnected)
-                Disconnect();
+                throw new InvalidOperationException("Cannot connect while client is still connected.");
 
             client = new TcpClient(Host, Port);
             // Verify that the client is allowed access by attempting to get basic data.
@@ -53,10 +53,10 @@ namespace NUTDotNetClient
 
         public void Disconnect()
         {
-            if (IsConnected)
-            {
-                client.Close();
-            }
+            if (!IsConnected)
+                throw new InvalidOperationException("Cannot disconnect while client is disconnected.");
+
+            client.Close();
         }
 
         /// <summary>
