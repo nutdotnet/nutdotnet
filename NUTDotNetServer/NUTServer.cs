@@ -4,6 +4,7 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace NUTDotNetServer
 {
@@ -22,7 +23,14 @@ namespace NUTDotNetServer
         public string Username { get; }
         private string Password;
         private TcpListener tcpListener;
-        public bool IsListening { get { return tcpListener.Server.IsBound; } }
+        public bool IsListening { 
+            get {
+                if (tcpListener is null)
+                    return false;
+                else
+                    return tcpListener.Server.IsBound; 
+            } 
+        }
         public string ServerVersion
         {
             get
@@ -46,8 +54,8 @@ namespace NUTDotNetServer
         /// </summary>
         public void BeginListening()
         {
-            if (tcpListener is null)
-                throw new InvalidOperationException("TcpListener is null, cannot begin listening.");
+            if (IsListening)
+                throw new InvalidOperationException("Server is already listening.");
 
             List<TcpClient> connectedClients = new List<TcpClient>();
             // Wait until the first client has connected, before we shutdown.
