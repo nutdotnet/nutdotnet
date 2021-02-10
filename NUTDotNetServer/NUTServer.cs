@@ -7,7 +7,7 @@ using System.Text;
 
 namespace NUTDotNetServer
 {
-    public class Server
+    public class NUTServer
     {
         //Specify the network protocol version
         public const string NETVER = "1.2";
@@ -32,7 +32,7 @@ namespace NUTDotNetServer
             }
         }
 
-        public Server(ushort listenPort = DEFAULT_PORT)
+        public NUTServer(ushort listenPort = DEFAULT_PORT)
         {
             ListenPort = listenPort;
             ListenAddress = IPAddress.Any;

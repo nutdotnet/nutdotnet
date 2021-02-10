@@ -13,13 +13,13 @@ namespace Testing
     /// </summary>
     public class ServerFixture : IDisposable
     {
-        public Server testServer { get; private set; }
+        public NUTServer testServer { get; private set; }
         private Task serverTask;
         public TcpClient testClient { get; private set; }
 
         public ServerFixture()
         {
-            testServer = new Server();
+            testServer = new NUTServer();
             testServer.AuthorizedClients.Add(IPAddress.Loopback);
             serverTask = new Task(() => testServer.BeginListening());
             serverTask.Start();
@@ -77,7 +77,7 @@ namespace Testing
             sw.WriteLine("NETVER");
             sw.Flush();
             string result = sr.ReadLine();
-            Assert.Equal(Server.NETVER, result);
+            Assert.Equal(NUTServer.NETVER, result);
         }
 
         [Fact]
@@ -100,7 +100,7 @@ namespace Testing
         public void TryUnauthedClient()
         {
             // Prepare an entirely new server and client for this test.
-            Server unauthedServer = new Server(3494);
+            NUTServer unauthedServer = new NUTServer(3494);
             Task unauthServerTask = new Task(() => unauthedServer.BeginListening());
             unauthServerTask.Start();
             TcpClient unauthedClient = new TcpClient("localhost", unauthedServer.ListenPort);
