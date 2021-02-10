@@ -5,7 +5,7 @@ using System.Text;
 
 namespace NUTDotNetClient
 {
-    class NUTClient
+    public class NUTClient
     {
         public string Host { get; }
         public ushort Port { get; }
