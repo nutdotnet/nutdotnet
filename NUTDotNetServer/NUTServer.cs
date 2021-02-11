@@ -4,32 +4,32 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace NUTDotNetServer
 {
-    public class NUTServer
+    public class NUTServer : IDisposable
     {
+        #region Public Members
         //Specify the network protocol version
         public const string NETVER = "1.2";
         public const ushort DEFAULT_PORT = 3493;
-        private static readonly Encoding PROTO_ENCODING = Encoding.ASCII;
-
         public IPAddress ListenAddress { get; }
         // List of clients allowed to execute commands. Even unauthorized clients are allowed to establish
         // a connection.
         public List<IPAddress> AuthorizedClients { get; set; }
         public ushort ListenPort { get; }
         public string Username { get; }
-        private string Password;
-        private TcpListener tcpListener;
-        public bool IsListening { 
-            get {
+        public bool IsListening
+        {
+            get
+            {
                 if (tcpListener is null)
                     return false;
                 else
-                    return tcpListener.Server.IsBound; 
-            } 
+                    return tcpListener.Server.IsBound;
+            }
         }
         public string ServerVersion
         {
@@ -39,34 +39,67 @@ namespace NUTDotNetServer
                 return assemblyName.FullName + " " + assemblyName.Version;
             }
         }
+        #endregion
+
+        #region Private Members
+        private bool disposed = false;
+        private static readonly Encoding PROTO_ENCODING = Encoding.ASCII;
+        private string Password;
+        private TcpListener tcpListener;
+        List<TcpClient> connectedClients;
+        private CancellationToken cancellationToken;
+        private CancellationTokenSource cancellationTokenSource;
+        #endregion
 
         public NUTServer(ushort listenPort = DEFAULT_PORT)
         {
             ListenPort = listenPort;
             ListenAddress = IPAddress.Any;
             AuthorizedClients = new List<IPAddress>();
-
+            connectedClients = new List<TcpClient>();
             tcpListener = new TcpListener(IPAddress.Any, ListenPort);
+            cancellationTokenSource = new CancellationTokenSource();
+            cancellationToken = cancellationTokenSource.Token;
+
+            Task.Run(() => BeginListening(), cancellationToken);
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposed)
+                return;
+
+            if (disposing)
+            {
+                cancellationTokenSource.Cancel();
+                cancellationTokenSource.Dispose();
+                tcpListener.Server.Close();
+                tcpListener.Stop();
+            }
+
+            disposed = true;
         }
 
         /// <summary>
         /// Start the listener and begin looping to accept clients.
         /// </summary>
-        public void BeginListening()
+        private async Task BeginListening()
         {
             if (IsListening)
                 throw new InvalidOperationException("Server is already listening.");
 
-            List<TcpClient> connectedClients = new List<TcpClient>();
-            // Wait until the first client has connected, before we shutdown.
-            bool firstStart = true;
             tcpListener.Start();
 
-            while (firstStart || connectedClients.Count > 0)
+            while (!cancellationToken.IsCancellationRequested)
             {
                 // Wait for a connection.
-                TcpClient newClient = tcpListener.AcceptTcpClient();
-                firstStart = false;
+                TcpClient newClient = await tcpListener.AcceptTcpClientAsync();
                 connectedClients.Add(newClient);
                 HandleNewClient(newClient);
 

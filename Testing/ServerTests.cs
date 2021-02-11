@@ -11,7 +11,7 @@ namespace Testing
     /// <summary>
     /// Creates a mockup server and connection only once that is available for all tests in this class.
     /// </summary>
-    public class ServerFixture : IDisposable
+    /*public class ServerFixture : IDisposable
     {
         public NUTServer testServer { get; private set; }
         private Task serverTask;
@@ -42,55 +42,83 @@ namespace Testing
             testClient.Close();
             serverTask.Wait();
         }
-    }
+    }*/
 
-    public class ServerTests : IClassFixture<ServerFixture>
+    public class ServerTests // : IClassFixture<ServerFixture>
     {
         // Make the public fixture variables accessible
-        ServerFixture serverFixture;
+        //ServerFixture serverFixture;
 
-        public ServerTests(ServerFixture fixture)
+        /*public ServerTests(ServerFixture fixture)
         {
             serverFixture = fixture;
+        }*/
+
+        private static NUTServer PrepareServer()
+        {
+            NUTServer server = new NUTServer();
+            server.AuthorizedClients.Add(IPAddress.Loopback);
+            return server;
+        }
+
+        private static TcpClient PrepareClient(NUTServer server)
+        {
+            TcpClient client = new TcpClient("localhost", server.ListenPort);
+            return client;
         }
 
         [Fact]
         public void GetServerVersion()
         {
-            Stream baseStream = serverFixture.testClient.GetStream();
-            StreamReader sr = new StreamReader(baseStream);
-            StreamWriter sw = new StreamWriter(baseStream);
+            using (NUTServer server = PrepareServer())
+            {
+                TcpClient client = PrepareClient(server);
+                Stream baseStream = client.GetStream();
+                StreamReader sr = new StreamReader(baseStream);
+                StreamWriter sw = new StreamWriter(baseStream);
 
-            sw.WriteLine("VER");
-            sw.Flush();
-            string result = sr.ReadLine();
-            Assert.Equal(serverFixture.testServer.ServerVersion, result);
+                sw.WriteLine("VER");
+                sw.Flush();
+                string result = sr.ReadLine();
+                Assert.Equal(server.ServerVersion, result);
+                client.Close();
+            }
         }
 
         [Fact]
         public void GetNetworkProtocolVersion()
         {
-            Stream baseStream = serverFixture.testClient.GetStream();
-            StreamReader sr = new StreamReader(baseStream);
-            StreamWriter sw = new StreamWriter(baseStream);
+            using (NUTServer server = PrepareServer())
+            {
+                TcpClient client = PrepareClient(server);
+                Stream baseStream = client.GetStream();
+                StreamReader sr = new StreamReader(baseStream);
+                StreamWriter sw = new StreamWriter(baseStream);
 
-            sw.WriteLine("NETVER");
-            sw.Flush();
-            string result = sr.ReadLine();
-            Assert.Equal(NUTServer.NETVER, result);
+                sw.WriteLine("NETVER");
+                sw.Flush();
+                string result = sr.ReadLine();
+                Assert.Equal(NUTServer.NETVER, result);
+                client.Close();
+            }
         }
 
         [Fact]
         public void AttemptIncorrectCommand()
         {
-            Stream baseStream = serverFixture.testClient.GetStream();
-            StreamReader sr = new StreamReader(baseStream);
-            StreamWriter sw = new StreamWriter(baseStream);
+            using (NUTServer server = PrepareServer())
+            {
+                TcpClient client = PrepareClient(server);
+                Stream baseStream = client.GetStream();
+                StreamReader sr = new StreamReader(baseStream);
+                StreamWriter sw = new StreamWriter(baseStream);
 
-            sw.WriteLine("TRY UNKNOWN COMMAND");
-            sw.Flush();
-            string result = sr.ReadLine();
-            Assert.Equal("ERR UNKNOWN-COMMAND", result);
+                sw.WriteLine("TRY UNKNOWN COMMAND");
+                sw.Flush();
+                string result = sr.ReadLine();
+                Assert.Equal("ERR UNKNOWN-COMMAND", result);
+                client.Close();
+            }
         }
 
         /// <summary>
@@ -99,28 +127,24 @@ namespace Testing
         [Fact]
         public void TryUnauthedClient()
         {
-            // Prepare an entirely new server and client for this test.
-            NUTServer unauthedServer = new NUTServer(3494);
-            Task unauthServerTask = new Task(() => unauthedServer.BeginListening());
-            unauthServerTask.Start();
-            TcpClient unauthedClient = new TcpClient("localhost", unauthedServer.ListenPort);
+            using (NUTServer server = PrepareServer())
+            {
+                server.AuthorizedClients.Clear();
+                TcpClient client = PrepareClient(server);
+                Stream baseStream = client.GetStream();
+                StreamReader sr = new StreamReader(baseStream);
+                StreamWriter sw = new StreamWriter(baseStream);
 
-            Stream baseStream = unauthedClient.GetStream();
-            StreamReader sr = new StreamReader(baseStream);
-            StreamWriter sw = new StreamWriter(baseStream);
-
-            sw.WriteLine("VER");
-            sw.Flush();
-            string result = sr.ReadLine();
-            Assert.Equal("ERR ACCESS-DENIED", result);
-            sw.WriteLine("LOGOUT");
-            sw.Flush();
-            result = sr.ReadLine();
-            Assert.Equal("OK Goodbye", result);
-
-            // Cleanup.
-            unauthedClient.Close();
-            unauthServerTask.Wait();
+                sw.WriteLine("VER");
+                sw.Flush();
+                string result = sr.ReadLine();
+                Assert.Equal("ERR ACCESS-DENIED", result);
+                sw.WriteLine("LOGOUT");
+                sw.Flush();
+                result = sr.ReadLine();
+                Assert.Equal("OK Goodbye", result);
+                client.Close();
+            }
         }
     }
 }
