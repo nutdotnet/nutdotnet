@@ -8,52 +8,8 @@ using Xunit;
 
 namespace Testing
 {
-    /// <summary>
-    /// Creates a mockup server and connection only once that is available for all tests in this class.
-    /// </summary>
-    /*public class ServerFixture : IDisposable
+    public class ServerTests
     {
-        public NUTServer testServer { get; private set; }
-        private Task serverTask;
-        public TcpClient testClient { get; private set; }
-
-        public ServerFixture()
-        {
-            testServer = new NUTServer();
-            testServer.AuthorizedClients.Add(IPAddress.Loopback);
-            serverTask = new Task(() => testServer.BeginListening());
-            serverTask.Start();
-            testClient = new TcpClient("localhost", testServer.ListenPort);
-        }
-
-        public void Dispose()
-        {
-            Stream baseStream = testClient.GetStream();
-            StreamReader sr = new StreamReader(baseStream);
-            StreamWriter sw = new StreamWriter(baseStream);
-
-            sw.WriteLine("LOGOUT");
-            sw.Flush();
-            string result = sr.ReadLine();
-            Assert.Equal("OK Goodbye", result);
-
-            sr.Close();
-            sw.Close();
-            testClient.Close();
-            serverTask.Wait();
-        }
-    }*/
-
-    public class ServerTests // : IClassFixture<ServerFixture>
-    {
-        // Make the public fixture variables accessible
-        //ServerFixture serverFixture;
-
-        /*public ServerTests(ServerFixture fixture)
-        {
-            serverFixture = fixture;
-        }*/
-
         private static NUTServer PrepareServer()
         {
             NUTServer server = new NUTServer();

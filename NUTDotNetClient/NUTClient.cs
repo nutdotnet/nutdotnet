@@ -10,6 +10,9 @@ namespace NUTDotNetClient
         public string Host { get; }
         public ushort Port { get; }
         public string Username { get; }
+        // Use the Unix newline representation for NUT compatibility.
+        private static readonly string NewLine = "\n";
+        private static readonly Encoding ProtocolEncoding = Encoding.ASCII;
         private string Password;
         private TcpClient client;
         public bool IsConnected
@@ -104,16 +107,17 @@ namespace NUTDotNetClient
             DateTime querySent;
             DateTime responseReceived;
 
-            using (NetworkStream stream = client.GetStream())
-            {
-                StreamWriter streamWriter = new StreamWriter(stream, Encoding.ASCII);
-                querySent = DateTime.Now;
-                streamWriter.Write(query);
+            NetworkStream stream = client.GetStream();
+            StreamWriter streamWriter = new StreamWriter(stream, ProtocolEncoding);
+            streamWriter.NewLine = NewLine;
+            StreamReader streamReader = new StreamReader(stream, ProtocolEncoding);
 
-                StreamReader streamReader = new StreamReader(stream, Encoding.ASCII);
-                response = streamReader.ReadToEnd();
-                responseReceived = DateTime.Now;
-            }
+            querySent = DateTime.Now;
+            streamWriter.WriteLine(query);
+            streamWriter.Flush();
+
+            response = streamReader.ReadLine();
+            responseReceived = DateTime.Now;
 
             return new Response(response, querySent, responseReceived);
         }

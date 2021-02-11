@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -44,6 +45,8 @@ namespace NUTDotNetServer
         #region Private Members
         private bool disposed = false;
         private static readonly Encoding PROTO_ENCODING = Encoding.ASCII;
+        // Use Unix newline like NUT normally does.
+        private static readonly string NewLine = "\n";
         private string Password;
         private TcpListener tcpListener;
         List<TcpClient> connectedClients;
@@ -118,12 +121,20 @@ namespace NUTDotNetServer
 
             NetworkStream clientNetStream = newClient.GetStream();
             StreamReader streamReader = new StreamReader(clientNetStream, PROTO_ENCODING);
-            StreamWriter streamWriter = new StreamWriter(clientNetStream, PROTO_ENCODING);
+            StreamWriter streamWriter = new StreamWriter(clientNetStream, PROTO_ENCODING)
+            {
+                AutoFlush = true,
+                NewLine = NUTServer.NewLine
+            };
 
             // Enter into a loop of listening a responding to queries.
             string readLine;
-            while (newClient.Connected && !((readLine = streamReader.ReadLine()) is null))
+            while (newClient.Connected)
             {
+                readLine = streamReader.ReadLine();
+                if (readLine is null)
+                    continue;
+
                 // If the client is not authorized, then any command besides LOGOUT will result in an A.D error.
                 if (!readLine.Equals("LOGOUT") & !isAuthorized)
                 {
@@ -148,9 +159,9 @@ namespace NUTDotNetServer
                         streamWriter.WriteLine("ERR UNKNOWN-COMMAND");
                     }
                 }
-
-                streamWriter.Flush();
             }
+
+            Debug.WriteLine("Client has gone away.");
         }
     }
 }
