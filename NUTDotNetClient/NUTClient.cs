@@ -59,6 +59,7 @@ namespace NUTDotNetClient
             if (!IsConnected)
                 throw new InvalidOperationException("Cannot disconnect while client is disconnected.");
 
+            Response attemptDisconnect = SendQuery("LOGOUT");
             client.Close();
         }
 
