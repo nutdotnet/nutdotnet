@@ -1,10 +1,10 @@
-﻿using System;
+﻿using NUTDotNetShared;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -15,7 +15,6 @@ namespace NUTDotNetServer
         #region Public Members
         //Specify the network protocol version
         public const string NETVER = "1.2";
-        public const ushort DEFAULT_PORT = 3493;
         public IPAddress ListenAddress { get; }
         // List of clients allowed to execute commands. Even unauthorized clients are allowed to establish
         // a connection.
@@ -44,9 +43,6 @@ namespace NUTDotNetServer
 
         #region Private Members
         private bool disposed = false;
-        private static readonly Encoding PROTO_ENCODING = Encoding.ASCII;
-        // Use Unix newline like NUT normally does.
-        private static readonly string NewLine = "\n";
         private string Password;
         private TcpListener tcpListener;
         List<TcpClient> connectedClients;
@@ -54,7 +50,7 @@ namespace NUTDotNetServer
         private CancellationTokenSource cancellationTokenSource;
         #endregion
 
-        public NUTServer(ushort listenPort = DEFAULT_PORT)
+        public NUTServer(ushort listenPort = NUTCommon.DEFAULT_PORT)
         {
             ListenPort = listenPort;
             ListenAddress = IPAddress.Any;
@@ -120,11 +116,11 @@ namespace NUTDotNetServer
             bool isAuthorized = AuthorizedClients.Contains(clientEndpoint.Address);
 
             NetworkStream clientNetStream = newClient.GetStream();
-            StreamReader streamReader = new StreamReader(clientNetStream, PROTO_ENCODING);
-            StreamWriter streamWriter = new StreamWriter(clientNetStream, PROTO_ENCODING)
+            StreamReader streamReader = new StreamReader(clientNetStream, NUTCommon.PROTO_ENCODING);
+            StreamWriter streamWriter = new StreamWriter(clientNetStream, NUTCommon.PROTO_ENCODING)
             {
                 AutoFlush = true,
-                NewLine = NUTServer.NewLine
+                NewLine = NUTCommon.NewLine
             };
 
             // Enter into a loop of listening a responding to queries.

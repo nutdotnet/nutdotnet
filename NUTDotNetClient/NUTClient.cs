@@ -1,7 +1,7 @@
-﻿using System;
+﻿using NUTDotNetShared;
+using System;
 using System.IO;
 using System.Net.Sockets;
-using System.Text;
 
 namespace NUTDotNetClient
 {
@@ -10,9 +10,6 @@ namespace NUTDotNetClient
         public string Host { get; }
         public ushort Port { get; }
         public string Username { get; }
-        // Use the Unix newline representation for NUT compatibility.
-        private static readonly string NewLine = "\n";
-        private static readonly Encoding ProtocolEncoding = Encoding.ASCII;
         private string Password;
         private TcpClient client;
         public bool IsConnected
@@ -109,9 +106,9 @@ namespace NUTDotNetClient
             DateTime responseReceived;
 
             NetworkStream stream = client.GetStream();
-            StreamWriter streamWriter = new StreamWriter(stream, ProtocolEncoding);
-            streamWriter.NewLine = NewLine;
-            StreamReader streamReader = new StreamReader(stream, ProtocolEncoding);
+            StreamWriter streamWriter = new StreamWriter(stream, NUTCommon.PROTO_ENCODING);
+            streamWriter.NewLine = NUTCommon.NewLine;
+            StreamReader streamReader = new StreamReader(stream, NUTCommon.PROTO_ENCODING);
 
             querySent = DateTime.Now;
             streamWriter.WriteLine(query);
