@@ -2,7 +2,7 @@
 
 namespace NUTDotNetShared
 {
-    class UPS
+    public class UPS
     {
         public readonly string Name;
         public readonly string Description;
@@ -12,6 +12,11 @@ namespace NUTDotNetShared
         {
             Name = name;
             Description = description;
+        }
+
+        public override string ToString()
+        {
+            return "UPS " + Name + " \"" + Description + "\"";
         }
     }
 }
