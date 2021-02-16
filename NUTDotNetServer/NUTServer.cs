@@ -58,9 +58,10 @@ namespace NUTDotNetServer
         List<TcpClient> connectedClients;
         private CancellationToken cancellationToken;
         private CancellationTokenSource cancellationTokenSource;
+        private bool singleQueryMode = false;
         #endregion
 
-        public NUTServer(ushort listenPort = NUTCommon.DEFAULT_PORT)
+        public NUTServer(ushort listenPort = NUTCommon.DEFAULT_PORT, bool singleQuery = false)
         {
             ListenAddress = IPAddress.Any;
             AuthorizedClients = new List<IPAddress>();
@@ -69,6 +70,7 @@ namespace NUTDotNetServer
             tcpListener = new TcpListener(IPAddress.Any, listenPort);
             cancellationTokenSource = new CancellationTokenSource();
             cancellationToken = cancellationTokenSource.Token;
+            singleQueryMode = singleQuery;
 
             tcpListener.Start();
             Debug.WriteLine("NUT server has started. PID: {0}, Port: {1}",
@@ -187,8 +189,11 @@ namespace NUTDotNetServer
                         streamWriter.WriteLine("ERR UNKNOWN-COMMAND");
                     }
                 }
+                if (singleQueryMode)
+                    break;
             }
-            Debug.WriteLine("Client has gone away.");
+            streamReader.Dispose();
+            streamWriter.Dispose();
         }
 
         private string ParseListQuery(string query)
@@ -205,20 +210,48 @@ namespace NUTDotNetServer
                         response.Append(ups + NUTCommon.NewLine);
                     response.Append("END LIST UPS" + NUTCommon.NewLine);
                 }
+                else if (dividedQuery[0].Equals("VAR"))
+                {
+                    if (dividedQuery.Length == 1 || dividedQuery[1].Equals(string.Empty))
+                        throw new Exception();
+
+                    UPS upsObject = GetUPSByName(dividedQuery[1]);
+                    if (upsObject is null)
+                    {
+                        response.Clear();
+                        response.Append("ERR UNKNOWN-UPS" + NUTCommon.NewLine);
+                    }
+                    else
+                    {
+                        response.Append("BEGIN LIST VAR " + dividedQuery[1] + NUTCommon.NewLine);
+                        response.Append(upsObject.VariablesToString());
+                        response.Append("END LIST VAR " + dividedQuery[1] + NUTCommon.NewLine);
+                    }
+                }
                 // Bad subquery provided.
                 else
                 {
-                    throw new Exception(dividedQuery[0]);
+                    throw new Exception();
                 }
             }
             catch (Exception ex)
             {
                 response.Clear();
-                response.Append("ERR INVALID-ARGUMENT ");
-                response.Append(ex.Message + NUTCommon.NewLine);
+                response.Append("ERR INVALID-ARGUMENT" + NUTCommon.NewLine);
             }
 
             return response.ToString();
+        }
+
+        public UPS GetUPSByName(string name)
+        {
+            for (int i = 0; i < UPSs.Count; i++)
+            {
+                if (UPSs[i].Name.Equals(name))
+                    return UPSs[i];
+            }
+
+            return null;
         }
     }
 }

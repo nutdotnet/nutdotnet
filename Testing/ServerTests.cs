@@ -20,9 +20,9 @@ namespace ServerMockupTests
 
         private bool disposed = false;
 
-        public DisposableTestData()
+        public DisposableTestData(bool singleQuery)
         {
-            Server = new NUTServer(0);
+            Server = new NUTServer(0, singleQuery);
             Debug.WriteLine("Server started in test.");
             Client = new TcpClient("localhost", Server.ListenPort);
             Reader = new StreamReader(Client.GetStream());
@@ -62,7 +62,7 @@ namespace ServerMockupTests
         [Fact]
         public void GetServerVersion()
         {
-            using DisposableTestData testDat = new DisposableTestData();
+            using DisposableTestData testDat = new DisposableTestData(true);
 
             testDat.Writer.WriteLine("VER");
             string result = testDat.Reader.ReadLine();
@@ -72,7 +72,7 @@ namespace ServerMockupTests
         [Fact]
         public void GetNetworkProtocolVersion()
         {
-            using DisposableTestData testDat = new DisposableTestData();
+            using DisposableTestData testDat = new DisposableTestData(true);
 
             testDat.Writer.WriteLine("NETVER");
             string result = testDat.Reader.ReadLine();
@@ -82,7 +82,7 @@ namespace ServerMockupTests
         [Fact]
         public void AttemptIncorrectCommand()
         {
-            using DisposableTestData testDat = new DisposableTestData();
+            using DisposableTestData testDat = new DisposableTestData(true);
 
             testDat.Writer.WriteLine("TRY UNKNOWN COMMAND");
             string result = testDat.Reader.ReadLine();
@@ -95,7 +95,7 @@ namespace ServerMockupTests
         [Fact]
         public void TryUnauthedClient()
         {
-            using DisposableTestData testDat = new DisposableTestData();
+            using DisposableTestData testDat = new DisposableTestData(false);
             testDat.Server.AuthorizedClients.Add(new IPAddress(new byte[] { 192, 0, 2, 0 }));
 
             testDat.Writer.WriteLine("VER");
@@ -107,12 +107,12 @@ namespace ServerMockupTests
         }
     }
 
-    public class ServerListTests
+    public class BasicListTests
     {
         [Fact]
         public void TryEmptyListQuery()
         {
-            using DisposableTestData testDat = new DisposableTestData();
+            using DisposableTestData testDat = new DisposableTestData(true);
             testDat.Writer.WriteLine("LIST ");
             string response = testDat.Reader.ReadLine();
             Assert.Equal("ERR UNKNOWN-COMMAND", response);
@@ -121,20 +121,23 @@ namespace ServerMockupTests
         [Fact]
         public void TryUnknownListQuery()
         {
-            using DisposableTestData testData = new DisposableTestData();
+            using DisposableTestData testData = new DisposableTestData(true);
             testData.Writer.WriteLine("LIST BADCOMMAND");
             string response = testData.Reader.ReadLine();
-            Assert.Equal("ERR INVALID-ARGUMENT BADCOMMAND", response);
+            Assert.Equal("ERR INVALID-ARGUMENT", response);
         }
+    }
 
+    public class ListUPSTests
+    {
         [Fact]
         public void TestLegitimateListUPSQuery()
         {
-            using DisposableTestData testData = new DisposableTestData();
+            using DisposableTestData testData = new DisposableTestData(true);
             testData.Server.UPSs.Add(new UPS("SampleUPS", "A sample UPS."));
             testData.Writer.WriteLine("LIST UPS");
             List<string> response = new List<string>(3);
-            for (int i = 0; i <=2; i++)
+            for (int i = 0; i <= 2; i++)
             {
                 response.Add(testData.Reader.ReadLine());
             }
@@ -147,7 +150,7 @@ namespace ServerMockupTests
         [Fact]
         public void TestMultipleListUPSResponses()
         {
-            using DisposableTestData testData = new DisposableTestData();
+            using DisposableTestData testData = new DisposableTestData(true);
             testData.Server.UPSs.Add(new UPS("TestUPS1", "Test description 1"));
             testData.Server.UPSs.Add(new UPS("TestUPS2", "Test description 2"));
             testData.Server.UPSs.Add(new UPS("TestUPS3", null));
@@ -161,8 +164,55 @@ namespace ServerMockupTests
             Assert.Equal("END LIST UPS", response[4]);
             for (int i = 1; i <= 3; i++)
             {
-                Assert.Equal(testData.Server.UPSs[i-1].ToString(), response[i]);
+                Assert.Equal(testData.Server.UPSs[i - 1].ToString(), response[i]);
             }
+        }
+    }
+
+    public class ListVarTests
+    {
+        [Fact]
+        public void TestEmptyVarQuery()
+        {
+            using DisposableTestData testData = new DisposableTestData(true);
+            testData.Writer.WriteLine("LIST VAR");
+            string response = testData.Reader.ReadLine();
+            Assert.Equal("ERR INVALID-ARGUMENT", response);
+        }
+
+        [Fact]
+        public void TestInvalidUPSName()
+        {
+            using DisposableTestData testData = new DisposableTestData(true);
+            testData.Writer.WriteLine("LIST VAR FOO");
+            string response = testData.Reader.ReadLine();
+            Assert.Equal("ERR UNKNOWN-UPS", response);
+        }
+
+        [Fact]
+        public void TestEmptyVars()
+        {
+            string expectedResponse = "BEGIN LIST VAR SampleUPS\n\nEND LIST VAR SampleUPS\n";
+            using DisposableTestData testData = new DisposableTestData(true);
+            UPS sampleUPS = new UPS("SampleUPS");
+            testData.Server.UPSs.Add(sampleUPS);
+            testData.Writer.WriteLine("LIST VAR " + sampleUPS.Name);
+            string response = testData.Reader.ReadToEnd();
+            Assert.Equal(expectedResponse, response);
+        }
+
+        [Fact]
+        public void TestValidVars()
+        {
+            string expectedResponse = "BEGIN LIST VAR SampleUPS\nVAR SampleUPS testvar \"testval\"\n" +
+                "END LIST VAR SampleUPS\n";
+            using DisposableTestData testData = new DisposableTestData(true);
+            UPS sampleUPS = new UPS("SampleUPS");
+            sampleUPS.Variables.Add("testvar", "testval");
+            testData.Server.UPSs.Add(sampleUPS);
+            testData.Writer.WriteLine("LIST VAR " + sampleUPS.Name);
+            string response = testData.Reader.ReadToEnd();
+            Assert.Equal(expectedResponse, response);
         }
     }
 }
