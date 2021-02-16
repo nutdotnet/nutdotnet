@@ -5,9 +5,9 @@
 
     <IsPackable>false</IsPackable>
 
-    <AssemblyVersion>1.0.45.21042</AssemblyVersion>
+    <AssemblyVersion>1.0.82.21047</AssemblyVersion>
 
-    <FileVersion>1.0.45.21042</FileVersion>
+    <FileVersion>1.0.82.21047</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -26,6 +26,12 @@
   <ItemGroup>
     <ProjectReference Include="..\NUTDotNetClient\NUTDotNetClient.csproj" />
     <ProjectReference Include="..\NUTDotNetServer\NUTDotNetServer.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Testing.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

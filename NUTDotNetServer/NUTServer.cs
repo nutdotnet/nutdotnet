@@ -22,7 +22,14 @@ namespace NUTDotNetServer
         public List<IPAddress> AuthorizedClients { get; set; }
         // UPSs that are configured for this server.
         public List<UPS> UPSs;
-        public ushort ListenPort { get; }
+        // If given autoassign port number (0), this will be invalid until the listener has started.
+        public int ListenPort
+        {
+            get
+            {
+                return ((IPEndPoint)tcpListener.LocalEndpoint).Port;
+            }
+        }
         public string Username { get; }
         public bool IsListening
         {
@@ -55,14 +62,17 @@ namespace NUTDotNetServer
 
         public NUTServer(ushort listenPort = NUTCommon.DEFAULT_PORT)
         {
-            ListenPort = listenPort;
             ListenAddress = IPAddress.Any;
             AuthorizedClients = new List<IPAddress>();
             connectedClients = new List<TcpClient>();
             UPSs = new List<UPS>();
-            tcpListener = new TcpListener(IPAddress.Any, ListenPort);
+            tcpListener = new TcpListener(IPAddress.Any, listenPort);
             cancellationTokenSource = new CancellationTokenSource();
             cancellationToken = cancellationTokenSource.Token;
+
+            tcpListener.Start();
+            Debug.WriteLine("NUT server has started. PID: {0}, Port: {1}",
+                Thread.CurrentThread.ManagedThreadId, ListenPort);
 
             Task.Run(() => BeginListening(), cancellationToken);
         }
@@ -94,15 +104,11 @@ namespace NUTDotNetServer
         /// </summary>
         private async Task BeginListening()
         {
-            if (IsListening)
-                throw new InvalidOperationException("Server is already listening.");
-
-            tcpListener.Start();
-
             while (!cancellationToken.IsCancellationRequested)
             {
                 // Wait for a connection.
                 TcpClient newClient = await tcpListener.AcceptTcpClientAsync();
+                Debug.WriteLine("New client connecting from " + newClient.Client.RemoteEndPoint);
                 connectedClients.Add(newClient);
                 HandleNewClient(newClient);
 
@@ -110,6 +116,7 @@ namespace NUTDotNetServer
                 connectedClients.Remove(newClient);
             }
 
+            Debug.WriteLine("Cancellation requested, shutting down server.");
             tcpListener.Stop();
         }
 
@@ -147,10 +154,13 @@ namespace NUTDotNetServer
             string readLine;
             while (newClient.Connected)
             {
-                readLine = streamReader.ReadLine();
-                if (readLine is null)
+                if (!clientNetStream.DataAvailable)
+                {
+                    Thread.Sleep(50);
                     continue;
+                }
 
+                readLine = streamReader.ReadLine();
                 // If the client is not authorized, then any command besides LOGOUT will result in an A.D error.
                 if (!readLine.Equals("LOGOUT") & !isAuthorized)
                 {
@@ -178,7 +188,6 @@ namespace NUTDotNetServer
                     }
                 }
             }
-
             Debug.WriteLine("Client has gone away.");
         }
 
@@ -199,7 +208,9 @@ namespace NUTDotNetServer
             }
             catch (Exception ex)
             {
-
+                response.Clear();
+                response.Append("ERR INVALID-ARGUMENT ");
+                response.Append(ex.Message + NUTCommon.NewLine);
             }
 
             return response.ToString();
