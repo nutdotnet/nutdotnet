@@ -1,6 +1,7 @@
 ﻿using NUTDotNetServer;
 using NUTDotNetShared;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
@@ -19,14 +20,10 @@ namespace ServerMockupTests
 
         private bool disposed = false;
 
-        public DisposableTestData(bool utilizeSampleUPS)
+        public DisposableTestData()
         {
-            SampleUPS = new UPS("SampleUPS", "A sample UPS.");
             Server = new NUTServer(0);
             Debug.WriteLine("Server started in test.");
-            if (utilizeSampleUPS)
-                Server.UPSs.Add(SampleUPS);
-
             Client = new TcpClient("localhost", Server.ListenPort);
             Reader = new StreamReader(Client.GetStream());
             Writer = new StreamWriter(Client.GetStream())
@@ -65,8 +62,7 @@ namespace ServerMockupTests
         [Fact]
         public void GetServerVersion()
         {
-            Debug.WriteLine("Beginning GetServerVersion test.");
-            using DisposableTestData testDat = new DisposableTestData(true);
+            using DisposableTestData testDat = new DisposableTestData();
 
             testDat.Writer.WriteLine("VER");
             string result = testDat.Reader.ReadLine();
@@ -76,8 +72,7 @@ namespace ServerMockupTests
         [Fact]
         public void GetNetworkProtocolVersion()
         {
-            Debug.WriteLine("Beginning GetNetworkProtocolVersion test.");
-            using DisposableTestData testDat = new DisposableTestData(true);
+            using DisposableTestData testDat = new DisposableTestData();
 
             testDat.Writer.WriteLine("NETVER");
             string result = testDat.Reader.ReadLine();
@@ -87,8 +82,7 @@ namespace ServerMockupTests
         [Fact]
         public void AttemptIncorrectCommand()
         {
-            Debug.WriteLine("Beginning IncorrectCommand test.");
-            using DisposableTestData testDat = new DisposableTestData(true);
+            using DisposableTestData testDat = new DisposableTestData();
 
             testDat.Writer.WriteLine("TRY UNKNOWN COMMAND");
             string result = testDat.Reader.ReadLine();
@@ -101,8 +95,7 @@ namespace ServerMockupTests
         [Fact]
         public void TryUnauthedClient()
         {
-            Debug.WriteLine("Beginning unathed client test.");
-            using DisposableTestData testDat = new DisposableTestData(true);
+            using DisposableTestData testDat = new DisposableTestData();
             testDat.Server.AuthorizedClients.Add(new IPAddress(new byte[] { 192, 0, 2, 0 }));
 
             testDat.Writer.WriteLine("VER");
@@ -119,11 +112,57 @@ namespace ServerMockupTests
         [Fact]
         public void TryEmptyListQuery()
         {
-            Debug.WriteLine("Beginning LIST Empty query test.");
-            using DisposableTestData testDat = new DisposableTestData(true);
+            using DisposableTestData testDat = new DisposableTestData();
             testDat.Writer.WriteLine("LIST ");
             string response = testDat.Reader.ReadLine();
             Assert.Equal("ERR UNKNOWN-COMMAND", response);
+        }
+
+        [Fact]
+        public void TryUnknownListQuery()
+        {
+            using DisposableTestData testData = new DisposableTestData();
+            testData.Writer.WriteLine("LIST BADCOMMAND");
+            string response = testData.Reader.ReadLine();
+            Assert.Equal("ERR INVALID-ARGUMENT BADCOMMAND", response);
+        }
+
+        [Fact]
+        public void TestLegitimateListUPSQuery()
+        {
+            using DisposableTestData testData = new DisposableTestData();
+            testData.Server.UPSs.Add(new UPS("SampleUPS", "A sample UPS."));
+            testData.Writer.WriteLine("LIST UPS");
+            List<string> response = new List<string>(3);
+            for (int i = 0; i <=2; i++)
+            {
+                response.Add(testData.Reader.ReadLine());
+            }
+
+            Assert.Equal("BEGIN LIST UPS", response[0]);
+            Assert.Equal(testData.Server.UPSs[0].ToString(), response[1]);
+            Assert.Equal("END LIST UPS", response[2]);
+        }
+
+        [Fact]
+        public void TestMultipleListUPSResponses()
+        {
+            using DisposableTestData testData = new DisposableTestData();
+            testData.Server.UPSs.Add(new UPS("TestUPS1", "Test description 1"));
+            testData.Server.UPSs.Add(new UPS("TestUPS2", "Test description 2"));
+            testData.Server.UPSs.Add(new UPS("TestUPS3", null));
+            testData.Writer.WriteLine("LIST UPS");
+            List<string> response = new List<string>(5);
+            for (int i = 0; i <= 4; i++)
+            {
+                response.Add(testData.Reader.ReadLine());
+            }
+            Assert.Equal("BEGIN LIST UPS", response[0]);
+            Assert.Equal("END LIST UPS", response[4]);
+            for (int i = 1; i <= 3; i++)
+            {
+                Assert.Equal(testData.Server.UPSs[i-1].ToString(), response[i]);
+            }
         }
     }
 }

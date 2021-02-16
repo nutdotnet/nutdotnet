@@ -205,6 +205,11 @@ namespace NUTDotNetServer
                         response.Append(ups + NUTCommon.NewLine);
                     response.Append("END LIST UPS" + NUTCommon.NewLine);
                 }
+                // Bad subquery provided.
+                else
+                {
+                    throw new Exception(dividedQuery[0]);
+                }
             }
             catch (Exception ex)
             {
