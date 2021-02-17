@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
 using Xunit;
 
 namespace ServerMockupTests
@@ -54,6 +55,20 @@ namespace ServerMockupTests
             }
 
             disposed = true;
+        }
+
+        public string ReadListResponse()
+        {
+            StringBuilder sb = new StringBuilder();
+            string line;
+            while (!Reader.EndOfStream)
+            {
+                line = Reader.ReadLine();
+                sb.Append(line + NUTCommon.NewLine);
+                if (line.StartsWith("END") || line.StartsWith("ERR"))
+                    break;
+            }
+            return sb.ToString();
         }
     }
 
@@ -169,49 +184,68 @@ namespace ServerMockupTests
         }
     }
 
-    public class ListVarTests
+    /// <summary>
+    /// Tests for the LIST query that utilize a common dictionary data structure.
+    /// </summary>
+    public class ListDictionaryTests
     {
         [Fact]
-        public void TestEmptyVarQuery()
+        public void TestEmptyQuery()
         {
-            using DisposableTestData testData = new DisposableTestData(true);
+            using DisposableTestData testData = new DisposableTestData(false);
             testData.Writer.WriteLine("LIST VAR");
             string response = testData.Reader.ReadLine();
+            Assert.Equal("ERR INVALID-ARGUMENT", response);
+            testData.Writer.WriteLine("LIST RW");
+            response = testData.Reader.ReadLine();
             Assert.Equal("ERR INVALID-ARGUMENT", response);
         }
 
         [Fact]
         public void TestInvalidUPSName()
         {
-            using DisposableTestData testData = new DisposableTestData(true);
+            using DisposableTestData testData = new DisposableTestData(false);
             testData.Writer.WriteLine("LIST VAR FOO");
             string response = testData.Reader.ReadLine();
+            Assert.Equal("ERR UNKNOWN-UPS", response);
+            testData.Writer.WriteLine("LIST RW FOO");
+            response = testData.Reader.ReadLine();
             Assert.Equal("ERR UNKNOWN-UPS", response);
         }
 
         [Fact]
-        public void TestEmptyVars()
+        public void TestEmptyDictionaries()
         {
             string expectedResponse = "BEGIN LIST VAR SampleUPS\n\nEND LIST VAR SampleUPS\n";
-            using DisposableTestData testData = new DisposableTestData(true);
+            using DisposableTestData testData = new DisposableTestData(false);
             UPS sampleUPS = new UPS("SampleUPS");
             testData.Server.UPSs.Add(sampleUPS);
             testData.Writer.WriteLine("LIST VAR " + sampleUPS.Name);
-            string response = testData.Reader.ReadToEnd();
+            string response = testData.ReadListResponse();
+            Assert.Equal(expectedResponse, response);
+            expectedResponse = "BEGIN LIST RW SampleUPS\n\nEND LIST RW SampleUPS\n";
+            testData.Writer.WriteLine("LIST RW " + sampleUPS.Name);
+            response = testData.ReadListResponse();
             Assert.Equal(expectedResponse, response);
         }
 
         [Fact]
-        public void TestValidVars()
+        public void TestValidDictionaries()
         {
             string expectedResponse = "BEGIN LIST VAR SampleUPS\nVAR SampleUPS testvar \"testval\"\n" +
                 "END LIST VAR SampleUPS\n";
-            using DisposableTestData testData = new DisposableTestData(true);
+            using DisposableTestData testData = new DisposableTestData(false);
             UPS sampleUPS = new UPS("SampleUPS");
             sampleUPS.Variables.Add("testvar", "testval");
+            sampleUPS.Rewritables.Add("testrw", "testrwval");
             testData.Server.UPSs.Add(sampleUPS);
             testData.Writer.WriteLine("LIST VAR " + sampleUPS.Name);
-            string response = testData.Reader.ReadToEnd();
+            string response = testData.ReadListResponse();
+            Assert.Equal(expectedResponse, response);
+            expectedResponse = "BEGIN LIST RW SampleUPS\nRW SampleUPS testrw \"testrwval\"\n" +
+                "END LIST RW SampleUPS\n";
+            testData.Writer.WriteLine("LIST RW " + sampleUPS.Name);
+            response = testData.ReadListResponse();
             Assert.Equal(expectedResponse, response);
         }
     }
