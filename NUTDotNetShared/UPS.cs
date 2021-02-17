@@ -9,6 +9,7 @@ namespace NUTDotNetShared
         public readonly string Description;
         public Dictionary<string, string> Variables;
         public Dictionary<string, string> Rewritables;
+        public List<string> Commands;
 
         public UPS(string name, string description = "Unavailable")
         {
@@ -16,6 +17,7 @@ namespace NUTDotNetShared
             Description = description;
             Variables = new Dictionary<string, string>();
             Rewritables = new Dictionary<string, string>();
+            Commands = new List<string>();
         }
 
         public override string ToString()
@@ -29,7 +31,7 @@ namespace NUTDotNetShared
         /// <param name="nutName">The type of data a NUT protocol device would expect, such as VAR or RW</param>
         /// <param name="dictionary">The dictionary to be parsed.</param>
         /// <returns></returns>
-        private string DictionaryToString(string nutName, Dictionary<string, string> dictionary)
+        public string DictionaryToString(string nutName, Dictionary<string, string> dictionary)
         {
             if (dictionary.Count == 0)
                 return NUTCommon.NewLine;
@@ -42,14 +44,17 @@ namespace NUTDotNetShared
             return sb.ToString();
         }
 
-        public string VariablesToString()
+        public string ListToString(string nutName, List<string> list)
         {
-            return DictionaryToString("VAR", Variables);
-        }
+            if (list.Count == 0)
+                return NUTCommon.NewLine;
 
-        public string RewritablesToString()
-        {
-            return DictionaryToString("RW", Rewritables);
+            StringBuilder sb = new StringBuilder(list.Count);
+            foreach (string item in list)
+            {
+                sb.AppendFormat("{0} {1} {2}{3}", nutName, Name, item, NUTCommon.NewLine);
+            }
+            return sb.ToString();
         }
     }
 }

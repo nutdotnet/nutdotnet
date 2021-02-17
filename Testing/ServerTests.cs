@@ -249,4 +249,36 @@ namespace ServerMockupTests
             Assert.Equal(expectedResponse, response);
         }
     }
+
+    /// <summary>
+    /// Tests that use the LIST command to get a list of single-value results
+    /// </summary>
+    public class ListSingleTests
+    {
+        [Fact]
+        public void TestEmptySingles()
+        {
+            string expectedResponse = "BEGIN LIST CMD SampleUPS\n\nEND LIST CMD SampleUPS\n";
+            using DisposableTestData testData = new DisposableTestData(false);
+            UPS sampleUPS = new UPS("SampleUPS");
+            testData.Server.UPSs.Add(sampleUPS);
+            testData.Writer.WriteLine("LIST CMD " + sampleUPS.Name);
+            string response = testData.ReadListResponse();
+            Assert.Equal(expectedResponse, response);
+        }
+
+        [Fact]
+        public void TestValidDictionaries()
+        {
+            string expectedResponse = "BEGIN LIST CMD SampleUPS\nCMD SampleUPS testcmd\n" +
+                "END LIST CMD SampleUPS\n";
+            using DisposableTestData testData = new DisposableTestData(false);
+            UPS sampleUPS = new UPS("SampleUPS");
+            sampleUPS.Commands.Add("testcmd");
+            testData.Server.UPSs.Add(sampleUPS);
+            testData.Writer.WriteLine("LIST CMD " + sampleUPS.Name);
+            string response = testData.ReadListResponse();
+            Assert.Equal(expectedResponse, response);
+        }
+    }
 }
