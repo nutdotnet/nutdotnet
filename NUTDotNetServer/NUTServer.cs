@@ -210,23 +210,10 @@ namespace NUTDotNetServer
                         response.Append(ups + NUTCommon.NewLine);
                     response.Append("END LIST UPS" + NUTCommon.NewLine);
                 }
-                else if (dividedQuery[0].Equals("VAR"))
+                else if (dividedQuery.Length == 2 && (dividedQuery[0].Equals("VAR") || dividedQuery[0].Equals("RW"))
+                    && !dividedQuery[1].Equals(string.Empty))
                 {
-                    if (dividedQuery.Length == 1 || dividedQuery[1].Equals(string.Empty))
-                        throw new Exception();
-
-                    UPS upsObject = GetUPSByName(dividedQuery[1]);
-                    if (upsObject is null)
-                    {
-                        response.Clear();
-                        response.Append("ERR UNKNOWN-UPS" + NUTCommon.NewLine);
-                    }
-                    else
-                    {
-                        response.Append("BEGIN LIST VAR " + dividedQuery[1] + NUTCommon.NewLine);
-                        response.Append(upsObject.VariablesToString());
-                        response.Append("END LIST VAR " + dividedQuery[1] + NUTCommon.NewLine);
-                    }
+                    DoDictionaryListQuery(dividedQuery[0], dividedQuery[1], response);
                 }
                 // Bad subquery provided.
                 else
@@ -241,6 +228,25 @@ namespace NUTDotNetServer
             }
 
             return response.ToString();
+        }
+
+        private void DoDictionaryListQuery(string subquery, string ups, StringBuilder sb)
+        {
+            UPS upsObject = GetUPSByName(ups);
+            if (upsObject is null)
+            {
+                sb.Clear();
+                sb.Append("ERR UNKNOWN-UPS" + NUTCommon.NewLine);
+            }
+            else
+            {
+                sb.AppendFormat("BEGIN LIST {0} {1}{2}", subquery, ups, NUTCommon.NewLine);
+                if (subquery.Equals("VAR"))
+                    sb.Append(upsObject.VariablesToString());
+                else if (subquery.Equals("RW"))
+                    sb.Append(upsObject.RewritablesToString());
+                sb.AppendFormat("END LIST {0} {1}{2}", subquery, ups, NUTCommon.NewLine);
+            }
         }
 
         public UPS GetUPSByName(string name)

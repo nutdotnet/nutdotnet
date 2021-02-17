@@ -8,12 +8,14 @@ namespace NUTDotNetShared
         public readonly string Name;
         public readonly string Description;
         public Dictionary<string, string> Variables;
+        public Dictionary<string, string> Rewritables;
 
         public UPS(string name, string description = "Unavailable")
         {
             Name = name;
             Description = description;
             Variables = new Dictionary<string, string>();
+            Rewritables = new Dictionary<string, string>();
         }
 
         public override string ToString()
@@ -21,17 +23,33 @@ namespace NUTDotNetShared
             return "UPS " + Name + " \"" + Description + "\"";
         }
 
-        public string VariablesToString()
+        /// <summary>
+        /// Basic function that can put a common dictionary to string as the NUT protocol would expect it.
+        /// </summary>
+        /// <param name="nutName">The type of data a NUT protocol device would expect, such as VAR or RW</param>
+        /// <param name="dictionary">The dictionary to be parsed.</param>
+        /// <returns></returns>
+        private string DictionaryToString(string nutName, Dictionary<string, string> dictionary)
         {
-            if (Variables.Count == 0)
+            if (dictionary.Count == 0)
                 return NUTCommon.NewLine;
 
-            StringBuilder sb = new StringBuilder(Variables.Count);
-            foreach (KeyValuePair<string, string> variable in Variables)
+            StringBuilder sb = new StringBuilder(dictionary.Count);
+            foreach (KeyValuePair<string, string> variable in dictionary)
             {
-                sb.AppendFormat("VAR {0} {1} \"{2}\"{3}", Name, variable.Key, variable.Value, NUTCommon.NewLine);
+                sb.AppendFormat("{0} {1} {2} \"{3}\"{4}", nutName, Name, variable.Key, variable.Value, NUTCommon.NewLine);
             }
             return sb.ToString();
+        }
+
+        public string VariablesToString()
+        {
+            return DictionaryToString("VAR", Variables);
+        }
+
+        public string RewritablesToString()
+        {
+            return DictionaryToString("RW", Rewritables);
         }
     }
 }
