@@ -281,4 +281,46 @@ namespace ServerMockupTests
             Assert.Equal(expectedResponse, response);
         }
     }
+
+    public class ListEnumTests
+    {
+        [Fact]
+        public void TestEmptyEnumName()
+        {
+            string expectedResponse = "ERR INVALID-ARGUMENT\n";
+            using DisposableTestData testData = new DisposableTestData(true);
+            UPS sampleUPS = new UPS("SampleUPS");
+            testData.Server.UPSs.Add(sampleUPS);
+            testData.Writer.WriteLine("LIST ENUM " + sampleUPS.Name);
+            string response = testData.ReadListResponse();
+            Assert.Equal(expectedResponse, response);
+        }
+
+        [Fact]
+        public void TestInvalidEnumName()
+        {
+            string expectedResponse = "BEGIN LIST ENUM SampleUPS foobar\n\nEND LIST ENUM SampleUPS foobar\n";
+            using DisposableTestData testData = new DisposableTestData(true);
+            UPS sampleUPS = new UPS("SampleUPS");
+            testData.Server.UPSs.Add(sampleUPS);
+            testData.Writer.WriteLine("LIST ENUM " + sampleUPS.Name + " foobar");
+            string response = testData.ReadListResponse();
+            Assert.Equal(expectedResponse, response);
+        }
+
+        [Fact]
+        public void TestValidEnumName()
+        {
+            string expectedResponse = "BEGIN LIST ENUM SampleUPS testenum\nENUM SampleUPS testenum \"1\"\n" +
+                "ENUM SampleUPS testenum \"2\"\nENUM SampleUPS testenum \"3\"\nEND LIST ENUM SampleUPS testenum\n";
+            using DisposableTestData testData = new DisposableTestData(true);
+            UPS sampleUPS = new UPS("SampleUPS");
+            sampleUPS.Enumerations.Add("testenum", new string[] { "1", "2", "3" });
+            testData.Server.UPSs.Add(sampleUPS);
+            testData.Writer.WriteLine("LIST ENUM " + sampleUPS.Name + " testenum");
+            string response = testData.ReadListResponse();
+            Assert.Equal(expectedResponse, response);
+
+        }
+    }
 }

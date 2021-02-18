@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Text;
 
 namespace NUTDotNetShared
@@ -10,6 +11,7 @@ namespace NUTDotNetShared
         public Dictionary<string, string> Variables;
         public Dictionary<string, string> Rewritables;
         public List<string> Commands;
+        public Dictionary<string, string[]> Enumerations;
 
         public UPS(string name, string description = "Unavailable")
         {
@@ -18,6 +20,7 @@ namespace NUTDotNetShared
             Variables = new Dictionary<string, string>();
             Rewritables = new Dictionary<string, string>();
             Commands = new List<string>();
+            Enumerations = new Dictionary<string, string[]>();
         }
 
         public override string ToString()
@@ -53,6 +56,19 @@ namespace NUTDotNetShared
             foreach (string item in list)
             {
                 sb.AppendFormat("{0} {1} {2}{3}", nutName, Name, item, NUTCommon.NewLine);
+            }
+            return sb.ToString();
+        }
+
+        public string EnumerationToString(string enumName)
+        {
+            if (Enumerations.Count == 0 || !Enumerations.ContainsKey(enumName))
+                return NUTCommon.NewLine;
+
+            StringBuilder sb = new StringBuilder();
+            foreach (string item in Enumerations[enumName])
+            {
+                sb.AppendFormat("ENUM {0} {1} \"{2}\"{3}", Name, enumName, item, NUTCommon.NewLine);
             }
             return sb.ToString();
         }

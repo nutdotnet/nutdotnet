@@ -211,27 +211,39 @@ namespace NUTDotNetServer
                         response.Append(ups + NUTCommon.NewLine);
                     response.Append("END LIST UPS" + NUTCommon.NewLine);
                 }
-                if (dividedQuery.Length == 2 && !dividedQuery[1].Equals(string.Empty))
+                else if (dividedQuery.Length >= 2 && !dividedQuery[1].Equals(string.Empty))
                 {
                     string upsName = dividedQuery[1];
-                    if (subquery.Equals("VAR") || subquery.Equals("RW") || subquery.Equals("CMD"))
+                    UPS upsObject = GetUPSByName(upsName);
+                    if (upsObject is null)
                     {
-                        UPS upsObject = GetUPSByName(upsName);
-                        if (upsObject is null)
+                        response.Clear();
+                        response.Append("ERR UNKNOWN-UPS" + NUTCommon.NewLine);
+                    }
+                    else if (subquery.Equals("VAR") || subquery.Equals("RW") || subquery.Equals("CMD"))
+                    {
+                        response.AppendFormat("BEGIN LIST {0} {1}{2}", subquery, upsName, NUTCommon.NewLine);
+                        if (subquery.Equals("VAR"))
+                            response.Append(upsObject.DictionaryToString("VAR", upsObject.Variables));
+                        else if (subquery.Equals("RW"))
+                            response.Append(upsObject.DictionaryToString("RW", upsObject.Rewritables));
+                        else if (subquery.Equals("CMD"))
+                            response.Append(upsObject.ListToString("CMD", upsObject.Commands));
+                        response.AppendFormat("END LIST {0} {1}{2}", subquery, upsName, NUTCommon.NewLine);
+                    }
+                    else if (subquery.Equals("ENUM"))
+                    {
+                        string varName = dividedQuery[2];
+                        if (varName.Equals(string.Empty))
                         {
                             response.Clear();
-                            response.Append("ERR UNKNOWN-UPS" + NUTCommon.NewLine);
+                            response.Append("ERR INVALID-ARGUMENT" + NUTCommon.NewLine);
                         }
                         else
                         {
-                            response.AppendFormat("BEGIN LIST {0} {1}{2}", subquery, upsName, NUTCommon.NewLine);
-                            if (subquery.Equals("VAR"))
-                                response.Append(upsObject.DictionaryToString("VAR", upsObject.Variables));
-                            else if (subquery.Equals("RW"))
-                                response.Append(upsObject.DictionaryToString("RW", upsObject.Rewritables));
-                            else if (subquery.Equals("CMD"))
-                                response.Append(upsObject.ListToString("CMD", upsObject.Commands));
-                            response.AppendFormat("END LIST {0} {1}{2}", subquery, upsName, NUTCommon.NewLine);
+                            response.AppendFormat("BEGIN LIST ENUM {0} {1}{2}", upsName, varName, NUTCommon.NewLine);
+                            response.Append(upsObject.EnumerationToString(varName));
+                            response.AppendFormat("END LIST ENUM {0} {1}{2}", upsName, varName, NUTCommon.NewLine);
                         }
                     }
                 }
