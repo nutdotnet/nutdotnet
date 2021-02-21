@@ -196,6 +196,10 @@ namespace NUTDotNetServer
             streamWriter.Dispose();
         }
 
+        // Valid quieries for retrieving properties of a UPS.
+        private static List<string> ValidUPSQueries = new List<string> { "VAR", "RW", "CMD" };
+        // Valid ways to query a specified property of a UPS.
+        private static List<string> ValidUPSPropQueries = new List<string> { "ENUM", "RANGE" };
         private string ParseListQuery(string query)
         {
             StringBuilder response = new StringBuilder();
@@ -203,6 +207,9 @@ namespace NUTDotNetServer
             {
                 string[] dividedQuery = query.Split(null, 3);
                 string subquery = dividedQuery[0];
+                string upsName = dividedQuery.Length >= 2 ? dividedQuery[1] : string.Empty;
+                UPS upsObject;
+                string varName = dividedQuery.Length >= 3 ? dividedQuery[2] : string.Empty;
 
                 if (subquery.Equals("UPS"))
                 {
@@ -211,52 +218,39 @@ namespace NUTDotNetServer
                         response.Append(ups + NUTCommon.NewLine);
                     response.Append("END LIST UPS" + NUTCommon.NewLine);
                 }
-                else if (dividedQuery.Length >= 2 && !dividedQuery[1].Equals(string.Empty))
+                else if (!upsName.Equals(string.Empty) && ValidUPSQueries.Contains(subquery))
                 {
-                    string upsName = dividedQuery[1];
-                    UPS upsObject = GetUPSByName(upsName);
-                    if (upsObject is null)
-                    {
-                        response.Clear();
-                        response.Append("ERR UNKNOWN-UPS" + NUTCommon.NewLine);
-                    }
-                    else if (subquery.Equals("VAR") || subquery.Equals("RW") || subquery.Equals("CMD"))
-                    {
-                        response.AppendFormat("BEGIN LIST {0} {1}{2}", subquery, upsName, NUTCommon.NewLine);
-                        if (subquery.Equals("VAR"))
-                            response.Append(upsObject.DictionaryToString("VAR", upsObject.Variables));
-                        else if (subquery.Equals("RW"))
-                            response.Append(upsObject.DictionaryToString("RW", upsObject.Rewritables));
-                        else if (subquery.Equals("CMD"))
-                            response.Append(upsObject.ListToString("CMD", upsObject.Commands));
-                        response.AppendFormat("END LIST {0} {1}{2}", subquery, upsName, NUTCommon.NewLine);
-                    }
-                    else if (subquery.Equals("ENUM"))
-                    {
-                        string varName = dividedQuery[2];
-                        if (varName.Equals(string.Empty))
-                        {
-                            response.Clear();
-                            response.Append("ERR INVALID-ARGUMENT" + NUTCommon.NewLine);
-                        }
-                        else
-                        {
-                            response.AppendFormat("BEGIN LIST ENUM {0} {1}{2}", upsName, varName, NUTCommon.NewLine);
-                            response.Append(upsObject.EnumerationToString(varName));
-                            response.AppendFormat("END LIST ENUM {0} {1}{2}", upsName, varName, NUTCommon.NewLine);
-                        }
-                    }
+                    upsObject = GetUPSByName(upsName);
+                    response.AppendFormat("BEGIN LIST {0} {1}{2}", subquery, upsName, NUTCommon.NewLine);
+                    if (subquery.Equals("VAR"))
+                        response.Append(upsObject.DictionaryToString("VAR", upsObject.Variables));
+                    else if (subquery.Equals("RW"))
+                        response.Append(upsObject.DictionaryToString("RW", upsObject.Rewritables));
+                    else if (subquery.Equals("CMD"))
+                        response.Append(upsObject.ListToString("CMD", upsObject.Commands));
+                    response.AppendFormat("END LIST {0} {1}{2}", subquery, upsName, NUTCommon.NewLine);
+                }
+                else if (!varName.Equals(string.Empty) && ValidUPSPropQueries.Contains(subquery))
+                {
+                    upsObject = GetUPSByName(upsName);
+                    response.AppendFormat("BEGIN LIST {0} {1} {2}{3}", subquery, upsName, varName, NUTCommon.NewLine);
+                    if (subquery.Equals("ENUM"))
+                        response.Append(upsObject.EnumerationToString(varName));
+                    else if (subquery.Equals("RANGE"))
+                        response.Append(upsObject.RangeToString(varName));
+                    response.AppendFormat("END LIST {0} {1} {2}{3}", subquery, upsName, varName, NUTCommon.NewLine);
                 }
                 // Bad subquery provided.
                 else
                 {
-                    throw new Exception();
+                    throw new Exception(string.Empty);
                 }
             }
             catch (Exception ex)
             {
+                string error = ex.Message.Equals(string.Empty) ? "ERR INVALID-ARGUMENT" : ex.Message;
                 response.Clear();
-                response.Append("ERR INVALID-ARGUMENT" + NUTCommon.NewLine);
+                response.Append(error + NUTCommon.NewLine);
             }
 
             return response.ToString();
@@ -270,7 +264,7 @@ namespace NUTDotNetServer
                     return UPSs[i];
             }
 
-            return null;
+            throw new Exception("ERR UNKNOWN-UPS");
         }
     }
 }

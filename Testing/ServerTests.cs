@@ -323,4 +323,47 @@ namespace ServerMockupTests
 
         }
     }
+
+    public class ListRangeTests
+    {
+        [Fact]
+        public void TestEmptyEnumName()
+        {
+            string expectedResponse = "ERR INVALID-ARGUMENT\n";
+            using DisposableTestData testData = new DisposableTestData(true);
+            UPS sampleUPS = new UPS("SampleUPS");
+            testData.Server.UPSs.Add(sampleUPS);
+            testData.Writer.WriteLine("LIST RANGE " + sampleUPS.Name);
+            string response = testData.ReadListResponse();
+            Assert.Equal(expectedResponse, response);
+        }
+
+        [Fact]
+        public void TestInvalidEnumName()
+        {
+            string expectedResponse = "BEGIN LIST RANGE SampleUPS foobar\nEND LIST RANGE SampleUPS foobar\n";
+            using DisposableTestData testData = new DisposableTestData(true);
+            UPS sampleUPS = new UPS("SampleUPS");
+            testData.Server.UPSs.Add(sampleUPS);
+            testData.Writer.WriteLine("LIST RANGE " + sampleUPS.Name + " foobar");
+            string response = testData.ReadListResponse();
+            Assert.Equal(expectedResponse, response);
+        }
+
+        [Fact]
+        public void TestValidEnumName()
+        {
+            string expectedResponse = "BEGIN LIST RANGE SampleUPS testrange\nRANGE SampleUPS testrange \"1\" \"2\"\n" +
+                "RANGE SampleUPS testrange \"3\" \"4\"\nEND LIST RANGE SampleUPS testrange\n";
+            using DisposableTestData testData = new DisposableTestData(true);
+            UPS sampleUPS = new UPS("SampleUPS");
+            sampleUPS.AddRange("testrange", new string[] { "1", "2" });
+            sampleUPS.AddRange("testrange", new string[] { "3", "4" });
+            testData.Server.UPSs.Add(sampleUPS);
+            testData.Writer.WriteLine("LIST RANGE " + sampleUPS.Name + " testrange");
+            string response = testData.ReadListResponse();
+            Assert.Equal(expectedResponse, response);
+
+        }
+    }
 }
