@@ -14,6 +14,7 @@ namespace NUTDotNetShared
         public List<string> Commands;
         public Dictionary<string, string[]> Enumerations;
         public readonly Dictionary<string, List<string[]>> Ranges;
+        public List<string> Clients;
 
         public UPS(string name, string description = "Unavailable")
         {
@@ -24,6 +25,7 @@ namespace NUTDotNetShared
             Commands = new List<string>();
             Enumerations = new Dictionary<string, string[]>();
             Ranges = new Dictionary<string, List<string[]>>();
+            Clients = new List<string>();
         }
 
         public void AddRange(string name, string[] values)

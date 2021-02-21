@@ -272,13 +272,20 @@ namespace ServerMockupTests
         {
             string expectedResponse = "BEGIN LIST CMD SampleUPS\nCMD SampleUPS testcmd\n" +
                 "END LIST CMD SampleUPS\n";
+            string expectedClientResponse = "BEGIN LIST CLIENT SampleUPS\nCLIENT SampleUPS 127.0.0.1\n" +
+                "CLIENT SampleUPS ::1\nEND LIST CLIENT SampleUPS\n";
             using DisposableTestData testData = new DisposableTestData(false);
             UPS sampleUPS = new UPS("SampleUPS");
             sampleUPS.Commands.Add("testcmd");
+            sampleUPS.Clients.Add("127.0.0.1");
+            sampleUPS.Clients.Add("::1");
             testData.Server.UPSs.Add(sampleUPS);
             testData.Writer.WriteLine("LIST CMD " + sampleUPS.Name);
             string response = testData.ReadListResponse();
             Assert.Equal(expectedResponse, response);
+            testData.Writer.WriteLine("LIST CLIENT " + sampleUPS.Name);
+            response = testData.ReadListResponse();
+            Assert.Equal(expectedClientResponse, response);
         }
     }
 

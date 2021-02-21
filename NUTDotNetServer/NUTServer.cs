@@ -197,7 +197,7 @@ namespace NUTDotNetServer
         }
 
         // Valid quieries for retrieving properties of a UPS.
-        private static List<string> ValidUPSQueries = new List<string> { "VAR", "RW", "CMD" };
+        private static List<string> ValidUPSQueries = new List<string> { "VAR", "RW", "CMD", "CLIENT" };
         // Valid ways to query a specified property of a UPS.
         private static List<string> ValidUPSPropQueries = new List<string> { "ENUM", "RANGE" };
         private string ParseListQuery(string query)
@@ -228,6 +228,8 @@ namespace NUTDotNetServer
                         response.Append(upsObject.DictionaryToString("RW", upsObject.Rewritables));
                     else if (subquery.Equals("CMD"))
                         response.Append(upsObject.ListToString("CMD", upsObject.Commands));
+                    else if (subquery.Equals("CLIENT"))
+                        response.Append(upsObject.ListToString("CLIENT", upsObject.Clients));
                     response.AppendFormat("END LIST {0} {1}{2}", subquery, upsName, NUTCommon.NewLine);
                 }
                 else if (!varName.Equals(string.Empty) && ValidUPSPropQueries.Contains(subquery))
