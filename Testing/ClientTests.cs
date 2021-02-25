@@ -1,33 +1,26 @@
 ﻿using Xunit;
 using NUTDotNetServer;
 using NUTDotNetClient;
+using NUTDotNetShared;
 using System;
 using System.Net;
+using System.Collections.Generic;
 
-namespace Testing
+namespace ClientSide
 {
     public class ClientTests
     {
-        private static NUTServer PrepareServer(bool isAuthorized)
-        {
-            NUTServer newServer = new NUTServer();
-
-            if (isAuthorized)
-                newServer.AuthorizedClients.Add(IPAddress.Loopback);
-
-            return newServer;
-        }
         /// <summary>
         /// Test the connection and disconnection logic.
         /// </summary>
         [Fact]
         public void TrySimpleConnection()
         {
-            using (NUTServer server = PrepareServer(true))
+            using (NUTServer server = new NUTServer())
             {
-                NUTClient client = new NUTClient("localhost");
+                NUTClient client = new NUTClient("localhost", server.ListenPort);
                 Assert.Equal("localhost", client.Host);
-                Assert.Equal(3493, client.Port);
+                Assert.Equal(server.ListenPort, client.Port);
                 Assert.False(client.IsConnected);
 
                 // Attempt an incorrect disconnect since we haven't connected yet.
@@ -45,6 +38,34 @@ namespace Testing
                 // Now disconnect.
                 client.Disconnect();
                 Assert.False(client.IsConnected);
+            }
+        }
+
+        [Fact]
+        public void TestGetEmptyUPSes()
+        {
+            using (NUTServer server = new NUTServer())
+            {
+                NUTClient client = new NUTClient("localhost", server.ListenPort);
+                client.Connect();
+                List<ClientUPS> upses = client.GetUPSes();
+                Assert.Empty(upses);
+            }
+        }
+
+        [Fact]
+        public void TestGetUPSes()
+        {
+            using (NUTServer server = new NUTServer())
+            {
+                NUTClient client = new NUTClient("localhost", server.ListenPort);
+                client.Connect();
+
+                List<UPS> testData = new List<UPS> { new UPS("testups1"), new UPS("testups2", "test description"),
+                    new UPS("testups3", "test description")};
+                server.UPSs.AddRange(testData);
+                List<ClientUPS> upses = client.GetUPSes();
+                Assert.True(testData.TrueForAll((UPS item) => upses.Contains((ClientUPS)item)));
             }
         }
     }

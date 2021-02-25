@@ -1,4 +1,6 @@
 ﻿using System;
+using System.IO;
+using System.Text;
 
 namespace NUTDotNetClient
 {
@@ -57,51 +59,17 @@ namespace NUTDotNetClient
         public string Data { get; private set; }
 
         /// <summary>
-        /// Parse the response from a NUT server, determine if it was successful or not, separate the information, and
-        /// return a response object.
+        /// Generates a response object.
         /// </summary>
         /// <param name="responseData"></param>
         /// <param name="timeInitiated"></param>
         /// <param name="timeReceived"></param>
         /// <returns></returns>
-        public Response(string responseData, DateTime? timeInitiated = null, DateTime? timeReceived = null)
+        public Response(string responseData, DateTime timeInitiated, DateTime timeReceived)
         {
-            if (responseData == null || responseData.Equals(String.Empty))
-                throw new ArgumentException("Unexpected null or empty response returned.");
-
-            if (timeInitiated.HasValue & timeReceived.HasValue)
-            {
-                TimeInitiated = timeInitiated.Value;
-                TimeReceived = timeReceived.Value;
-
-                if (TimeInitiated > TimeReceived)
-                    throw new ArgumentException("The time initiated cannot be more recent than the time received.");
-            }
-            else if (!timeInitiated.HasValue & !timeReceived.HasValue)
-            {
-                TimeInitiated = default;
-                TimeReceived = default;
-            }
-            else
-                throw new ArgumentException("Either both or none of the time values must be provided.");
-
-            if (responseData.StartsWith("OK"))
-            {
-                // If there's more to the string than just the response, get that as well.
-                if (responseData.Length > 2)
-                {
-                    Data = responseData.Substring(3);
-                }
-            }
-            else if(responseData.StartsWith("ERR "))
-            {
-                throw new NUTException(responseData, ParseErrorCode(responseData));
-            }
-            // Likely some complex data was returned. Dump it as-is and send it back for processing.
-            else
-            {
-                Data = responseData;
-            }
+            Data = responseData;
+            TimeInitiated = timeInitiated;
+            TimeReceived = timeReceived;
         }
 
         /// <summary>
@@ -109,7 +77,7 @@ namespace NUTDotNetClient
         /// </summary>
         /// <param name="rawError"></param>
         /// <returns></returns>
-        private Error ParseErrorCode(string rawError)
+        public static Error ParseErrorCode(string rawError)
         {
             if (!rawError.StartsWith("ERR "))
                 throw new ArgumentOutOfRangeException("rawError", rawError,
