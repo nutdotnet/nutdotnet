@@ -322,7 +322,7 @@ namespace ServerMockupTests
                 "ENUM SampleUPS testenum \"2\"\nENUM SampleUPS testenum \"3\"\nEND LIST ENUM SampleUPS testenum\n";
             using DisposableTestData testData = new DisposableTestData(true);
             UPS sampleUPS = new UPS("SampleUPS");
-            sampleUPS.Enumerations.Add("testenum", new string[] { "1", "2", "3" });
+            sampleUPS.Enumerations.Add("testenum", new List<string> { "1", "2", "3" });
             testData.Server.UPSs.Add(sampleUPS);
             testData.Writer.WriteLine("LIST ENUM " + sampleUPS.Name + " testenum");
             string response = testData.ReadListResponse();

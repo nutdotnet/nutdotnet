@@ -6,67 +6,68 @@ using System;
 using System.Net;
 using System.Collections.Generic;
 
-namespace ClientSide
+namespace Testing
 {
-    public class ClientTests
+    public class ClientTests : IClassFixture<ServerFixture>
     {
+        // Use a shared server instance for all tests that won't alter conflicting states.
+        ServerFixture serverFixture;
+
+        public ClientTests(ServerFixture fixture)
+        {
+            serverFixture = fixture;
+        }
+
         /// <summary>
         /// Test the connection and disconnection logic.
         /// </summary>
         [Fact]
         public void TrySimpleConnection()
         {
-            using (NUTServer server = new NUTServer())
-            {
-                NUTClient client = new NUTClient("localhost", server.ListenPort);
-                Assert.Equal("localhost", client.Host);
-                Assert.Equal(server.ListenPort, client.Port);
-                Assert.False(client.IsConnected);
+            Assert.Equal("localhost", serverFixture.testClient.Host);
+            Assert.Equal(serverFixture.testServer.ListenPort, serverFixture.testClient.Port);
+            Assert.False(serverFixture.testClient.IsConnected);
 
-                // Attempt an incorrect disconnect since we haven't connected yet.
-                Assert.Throws<InvalidOperationException>(() => client.Disconnect());
+            // Attempt an incorrect disconnect since we haven't connected yet.
+            Assert.Throws<InvalidOperationException>(() => serverFixture.testClient.Disconnect());
 
-                // Now connect...
-                client.Connect();
-                Assert.True(client.IsConnected);
-                Assert.Equal(server.ServerVersion, client.ServerVersion);
-                Assert.Equal(NUTServer.NETVER, client.ProtocolVersion);
+            // Now connect...
+            serverFixture.testClient.Connect();
+            Assert.True(serverFixture.testClient.IsConnected);
+            Assert.Equal(serverFixture.testServer.ServerVersion, serverFixture.testClient.ServerVersion);
+            Assert.Equal(NUTServer.NETVER, serverFixture.testClient.ProtocolVersion);
 
-                // Try an invalid connect command.
-                Assert.Throws<InvalidOperationException>(() => client.Connect());
+            // Try an invalid connect command.
+            Assert.Throws<InvalidOperationException>(() => serverFixture.testClient.Connect());
 
-                // Now disconnect.
-                client.Disconnect();
-                Assert.False(client.IsConnected);
-            }
+            // Now disconnect.
+            serverFixture.testClient.Disconnect();
+            Assert.False(serverFixture.testClient.IsConnected);
         }
 
         [Fact]
         public void TestGetEmptyUPSes()
         {
-            using (NUTServer server = new NUTServer())
-            {
-                NUTClient client = new NUTClient("localhost", server.ListenPort);
-                client.Connect();
-                List<ClientUPS> upses = client.GetUPSes();
-                Assert.Empty(upses);
-            }
+            serverFixture.testClient.Connect();
+            List<ClientUPS> upses = serverFixture.testClient.GetUPSes();
+            Assert.Empty(upses);
+            serverFixture.testClient.Disconnect();
         }
 
         [Fact]
         public void TestGetUPSes()
         {
-            using (NUTServer server = new NUTServer())
-            {
-                NUTClient client = new NUTClient("localhost", server.ListenPort);
-                client.Connect();
+            serverFixture.testClient.Connect();
 
-                List<UPS> testData = new List<UPS> { new UPS("testups1"), new UPS("testups2", "test description"),
+            List<UPS> testData = new List<UPS> { new UPS("testups1"), new UPS("testups2", "test description"),
                     new UPS("testups3", "test description")};
-                server.UPSs.AddRange(testData);
-                List<ClientUPS> upses = client.GetUPSes();
-                Assert.True(testData.TrueForAll((UPS item) => upses.Contains((ClientUPS)item)));
-            }
+            serverFixture.testServer.UPSs.AddRange(testData);
+            List<ClientUPS> upses = serverFixture.testClient.GetUPSes();
+
+            Assert.True(upses.TrueForAll(client => testData.Contains(client)));
+
+            serverFixture.testServer.UPSs.Clear();
+            serverFixture.testClient.Disconnect();
         }
     }
 }
