@@ -1,9 +1,10 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Text;
 
 namespace NUTDotNetShared
 {
-    public class UPS
+    public class UPS : IEquatable<UPS>
     {
         public readonly string Name;
         public readonly string Description;
@@ -43,6 +44,30 @@ namespace NUTDotNetShared
         public override string ToString()
         {
             return "UPS " + Name + " \"" + Description + "\"";
+        }
+
+        public bool Equals(UPS obj)
+        {
+            if (obj is null)
+                return false;
+            return (Name == obj.Name &&
+                Description == obj.Description);
+        }
+
+        public override bool Equals(object obj)
+        {
+            return Equals(obj);
+        }
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                int hash = 53;
+                hash *= 23 + Name.GetHashCode();
+                hash *= 23 + Description.GetHashCode();
+                return hash;
+            }
         }
 
         /// <summary>
