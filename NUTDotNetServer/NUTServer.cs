@@ -163,6 +163,7 @@ namespace NUTDotNetServer
                 }
 
                 readLine = streamReader.ReadLine();
+                Debug.WriteLine(newClient.Client.RemoteEndPoint.ToString() + " says " + readLine);
                 // If the client is not authorized, then any command besides LOGOUT will result in an A.D error.
                 if (!readLine.Equals("LOGOUT") & !isAuthorized)
                 {
@@ -183,6 +184,7 @@ namespace NUTDotNetServer
                     else if (readLine.Equals("LOGOUT"))
                     {
                         streamWriter.WriteLine("OK Goodbye");
+                        break;
                     }
                     else
                     {
@@ -194,6 +196,7 @@ namespace NUTDotNetServer
             }
             streamReader.Dispose();
             streamWriter.Dispose();
+            Debug.WriteLine("Client " + newClient.Client.RemoteEndPoint.ToString() + " has disconnected.");
         }
 
         // Valid quieries for retrieving properties of a UPS.
