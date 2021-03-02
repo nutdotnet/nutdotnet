@@ -91,7 +91,7 @@ namespace NUTDotNetClient
             if (!IsConnected)
                 throw new InvalidOperationException("Cannot disconnect while client is disconnected.");
 
-            Response attemptDisconnect = SendQuery("LOGOUT", false);
+            SendQuery("LOGOUT");
             streamReader.Close();
             streamWriter.Close();
             client.Close();
@@ -105,10 +105,8 @@ namespace NUTDotNetClient
         {
             try
             {
-                Response getServerVersion = SendQuery("VER", false);
-                ServerVersion = getServerVersion.Data;
-                Response getProtocolVersion = SendQuery("NETVER", false);
-                ProtocolVersion = getProtocolVersion.Data;
+                ServerVersion = SendQuery("VER")[0];
+                ProtocolVersion = SendQuery("NETVER")[0];
             }
             catch (NUTException nutEx)
             {
@@ -130,13 +128,14 @@ namespace NUTDotNetClient
         public List<ClientUPS> GetUPSes()
         {
             List<ClientUPS> upses = new List<ClientUPS>();
-            Response getQuery = SendQuery("LIST UPS");
-            string[] splitResponse = getQuery.Data.Split(Environment.NewLine.ToCharArray());
-            foreach (string line in splitResponse)
+            List<string> listUpsResponse = SendQuery("LIST UPS");
+            foreach (string line in listUpsResponse)
             {
                 if (line.StartsWith("UPS"))
                 {
-                    string[] splitLine = line.Split(' ');
+                    // Strip out any extraneous quotes
+                    string strippedLine = line.Replace("\"", string.Empty);
+                    string[] splitLine = strippedLine.Split(new char[] { ' ' }, 3);
                     upses.Add(new ClientUPS(this, splitLine[1], splitLine[2]));
                 }
             }
@@ -153,49 +152,37 @@ namespace NUTDotNetClient
             //Response userAuth = SendQuery()
         }
 
-        private Response SendQuery(string query, bool recordTiming = false)
+        /// <summary>
+        /// Sends a query to the server, then decides how to handle the response. An error will be thrown if necessary.
+        /// </summary>
+        /// <param name="query"></param>
+        /// <returns></returns>
+        public List<string> SendQuery(string query)
         {
             if (!IsConnected)
                 throw new Exception("Attempted to send a query while disconnected.");
-            DateTime timeInitiated = default;
-            DateTime timeReceived = default;
 
-            if (recordTiming)
-                timeInitiated = DateTime.Now;
             streamWriter.WriteLine(query);
             string readData = streamReader.ReadLine();
 
             if (readData == null || readData.Equals(String.Empty))
                 throw new ArgumentException("Unexpected null or empty response returned.");
-
-            if (readData.StartsWith("OK"))
-            {
-                // If there's more to the string than just the response, get that as well.
-                if (readData.Length > 2)
-                {
-                    readData = readData.Substring(3);
-                }
-            }
-            else if (readData.StartsWith("ERR "))
+            if (readData.StartsWith("ERR "))
             {
                 throw new NUTException(readData, Response.ParseErrorCode(readData));
             }
+
+            List<string> returnList = new List<string>() { readData };
             // Multiline response, begin reading in.
-            else if (readData.StartsWith("BEGIN"))
+            if (readData.StartsWith("BEGIN"))
             {
-                StringBuilder sb = new StringBuilder(readData);
-                while (!readData.StartsWith("END"))
+                while (!(readData = streamReader.ReadLine()).StartsWith("END"))
                 {
-                    readData = streamReader.ReadLine();
-                    sb.AppendLine(readData);
+                    returnList.Add(readData);
                 }
-                readData = sb.ToString();
             }
 
-            if (recordTiming)
-                timeReceived = DateTime.Now;
-
-            return new Response(readData, timeInitiated, timeReceived);
+            return returnList;
         }
     }
 }
