@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Collections.Generic;
 using System.Text;
 
 namespace NUTDotNetShared
@@ -9,31 +7,37 @@ namespace NUTDotNetShared
     {
         public readonly string Name;
         public readonly string Description;
-        public Dictionary<string, string> Variables;
-        public Dictionary<string, string> Rewritables;
-        public List<string> Commands;
-        public Dictionary<string, string[]> Enumerations;
-        public readonly Dictionary<string, List<string[]>> Ranges;
-        public List<string> Clients;
+        protected Dictionary<string, string> variables;
+        protected Dictionary<string, string> rewritables;
+        protected List<string> commands;
+        protected Dictionary<string, List<string>> enumerations;
+        protected readonly Dictionary<string, List<string[]>> ranges;
+        protected List<string> clients;
 
         public UPS(string name, string description = "Unavailable")
         {
             Name = name;
             Description = description;
-            Variables = new Dictionary<string, string>();
-            Rewritables = new Dictionary<string, string>();
-            Commands = new List<string>();
-            Enumerations = new Dictionary<string, string[]>();
-            Ranges = new Dictionary<string, List<string[]>>();
-            Clients = new List<string>();
+            variables = new Dictionary<string, string>();
+            rewritables = new Dictionary<string, string>();
+            commands = new List<string>();
+            enumerations = new Dictionary<string, List<string>>();
+            ranges = new Dictionary<string, List<string[]>>();
+            clients = new List<string>();
         }
+
+        public Dictionary<string, string> Variables { get => variables; }
+        public Dictionary<string, string> Rewritables { get => rewritables; }
+        public List<string> Commands { get => commands; }
+        public Dictionary<string, List<string>> Enumerations { get => enumerations; }
+        public List<string> Clients { get => clients; }
 
         public void AddRange(string name, string[] values)
         {
-            if (Ranges.ContainsKey(name))
-                Ranges[name].Add(values);
+            if (ranges.ContainsKey(name))
+                ranges[name].Add(values);
             else
-                Ranges[name] = new List<string[]>() { values };
+                ranges[name] = new List<string[]>() { values };
         }
 
         public override string ToString()
@@ -75,11 +79,11 @@ namespace NUTDotNetShared
 
         public string EnumerationToString(string enumName)
         {
-            if (Enumerations.Count == 0 || !Enumerations.ContainsKey(enumName))
+            if (enumerations.Count == 0 || !enumerations.ContainsKey(enumName))
                 return NUTCommon.NewLine;
 
             StringBuilder sb = new StringBuilder();
-            foreach (string item in Enumerations[enumName])
+            foreach (string item in enumerations[enumName])
             {
                 sb.AppendFormat("ENUM {0} {1} \"{2}\"{3}", Name, enumName, item, NUTCommon.NewLine);
             }
@@ -88,11 +92,11 @@ namespace NUTDotNetShared
 
         public string RangeToString(string rangeName)
         {
-            if (Ranges.Count == 0 || !Ranges.ContainsKey(rangeName))
+            if (ranges.Count == 0 || !ranges.ContainsKey(rangeName))
                 return string.Empty;
 
             StringBuilder sb = new StringBuilder();
-            foreach (string[] range in Ranges[rangeName])
+            foreach (string[] range in ranges[rangeName])
             {
                 sb.AppendFormat("RANGE {0} {1} \"{2}\" \"{3}\"{4}", Name, rangeName, range[0], range[1],
                     NUTCommon.NewLine);
