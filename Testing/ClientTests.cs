@@ -1,21 +1,23 @@
-﻿using Xunit;
+﻿using NUTDotNetClient;
 using NUTDotNetServer;
-using NUTDotNetClient;
 using NUTDotNetShared;
 using System;
-using System.Net;
 using System.Collections.Generic;
+using Xunit;
+using Xunit.Abstractions;
 
 namespace Testing
 {
-    public class ClientTests : IClassFixture<ServerFixture>
+    public class ClientTests : IClassFixture<TestFixture>
     {
         // Use a shared server instance for all tests that won't alter conflicting states.
-        ServerFixture serverFixture;
+        TestFixture serverFixture;
+        readonly ITestOutputHelper output;
 
-        public ClientTests(ServerFixture fixture)
+        public ClientTests(TestFixture fixture, ITestOutputHelper output)
         {
             serverFixture = fixture;
+            this.output = output;
         }
 
         /// <summary>
@@ -49,7 +51,10 @@ namespace Testing
         public void TestGetEmptyUPSes()
         {
             serverFixture.testClient.Connect();
+            long startTicks = DateTime.Now.Ticks;
             List<ClientUPS> upses = serverFixture.testClient.GetUPSes();
+            long stopTicks = DateTime.Now.Ticks;
+            output.WriteLine("Empty LIST UPS reponse took {0} ticks.", stopTicks - startTicks);
             Assert.Empty(upses);
             serverFixture.testClient.Disconnect();
         }
@@ -62,12 +67,22 @@ namespace Testing
             List<UPS> testData = new List<UPS> { new UPS("testups1"), new UPS("testups2", "test description"),
                     new UPS("testups3", "test description")};
             serverFixture.testServer.UPSs.AddRange(testData);
+            long startTicks = DateTime.Now.Ticks;
             List<ClientUPS> upses = serverFixture.testClient.GetUPSes();
+            long stopTicks = DateTime.Now.Ticks;
+            output.WriteLine("Full LIST UPS reponse took {0} ticks.", stopTicks - startTicks);
+            startTicks = DateTime.Now.Ticks;
+            upses = serverFixture.testClient.GetUPSes();
+            stopTicks = DateTime.Now.Ticks;
+            output.WriteLine("Cached LIST UPS access took {0} ticks.", stopTicks - startTicks);
 
             Assert.True(upses.TrueForAll(client => testData.Contains(client)));
 
             serverFixture.testServer.UPSs.Clear();
             serverFixture.testClient.Disconnect();
+            // Reset the client.
+            serverFixture.testClient.Dispose();
+            serverFixture.testClient = new NUTClient("localhost", serverFixture.testServer.ListenPort);
         }
     }
 }
