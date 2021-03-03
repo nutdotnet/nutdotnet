@@ -194,9 +194,9 @@ namespace NUTDotNetServer
                 if (singleQueryMode)
                     break;
             }
-            streamReader.Dispose();
-            streamWriter.Dispose();
             Debug.WriteLine("Client " + newClient.Client.RemoteEndPoint.ToString() + " has disconnected.");
+            streamReader.Dispose();
+            streamWriter.Dispose();            
         }
 
         // Valid quieries for retrieving properties of a UPS.
