@@ -79,7 +79,7 @@ namespace NUTDotNetShared
         public string DictionaryToString(string nutName, Dictionary<string, string> dictionary)
         {
             if (dictionary.Count == 0)
-                return NUTCommon.NewLine;
+                return string.Empty;
 
             StringBuilder sb = new StringBuilder(dictionary.Count);
             foreach (KeyValuePair<string, string> variable in dictionary)
@@ -92,7 +92,7 @@ namespace NUTDotNetShared
         public string ListToString(string nutName, List<string> list)
         {
             if (list.Count == 0)
-                return NUTCommon.NewLine;
+                return string.Empty;
 
             StringBuilder sb = new StringBuilder(list.Count);
             foreach (string item in list)
@@ -105,7 +105,7 @@ namespace NUTDotNetShared
         public string EnumerationToString(string enumName)
         {
             if (enumerations.Count == 0 || !enumerations.ContainsKey(enumName))
-                return NUTCommon.NewLine;
+                return string.Empty;
 
             StringBuilder sb = new StringBuilder();
             foreach (string item in enumerations[enumName])
