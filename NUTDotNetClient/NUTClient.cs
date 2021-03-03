@@ -33,6 +33,7 @@ namespace NUTDotNetClient
         private bool disposed;
         private StreamWriter streamWriter;
         private StreamReader streamReader;
+        private List<ClientUPS> upses;
         #endregion
 
         /// <summary>
@@ -48,6 +49,7 @@ namespace NUTDotNetClient
             Port = port;
             Username = username;
             Password = password;
+            upses = new List<ClientUPS>();
         }
 
         public void Dispose()
@@ -125,20 +127,23 @@ namespace NUTDotNetClient
         /// Queries the server for a list of managed UPSes.
         /// </summary>
         /// <returns>A list of UPS objects found on the server, or an empty list.</returns>
-        public List<ClientUPS> GetUPSes()
+        public List<ClientUPS> GetUPSes(bool forceUpdate = false)
         {
-            List<ClientUPS> upses = new List<ClientUPS>();
-            List<string> listUpsResponse = SendQuery("LIST UPS");
-            foreach (string line in listUpsResponse)
+            if (forceUpdate || upses.Count == 0)
             {
-                if (line.StartsWith("UPS"))
+                List<string> listUpsResponse = SendQuery("LIST UPS");
+                foreach (string line in listUpsResponse)
                 {
-                    // Strip out any extraneous quotes
-                    string strippedLine = line.Replace("\"", string.Empty);
-                    string[] splitLine = strippedLine.Split(new char[] { ' ' }, 3);
-                    upses.Add(new ClientUPS(this, splitLine[1], splitLine[2]));
+                    if (line.StartsWith("UPS"))
+                    {
+                        // Strip out any extraneous quotes
+                        string strippedLine = line.Replace("\"", string.Empty);
+                        string[] splitLine = strippedLine.Split(new char[] { ' ' }, 3);
+                        upses.Add(new ClientUPS(this, splitLine[1], splitLine[2]));
+                    }
                 }
             }
+            
             return upses;
         }
 
@@ -176,10 +181,12 @@ namespace NUTDotNetClient
             // Multiline response, begin reading in.
             if (readData.StartsWith("BEGIN"))
             {
-                while (!(readData = streamReader.ReadLine()).StartsWith("END"))
+                while (!readData.StartsWith("END"))
                 {
+                    readData = streamReader.ReadLine();
                     returnList.Add(readData);
                 }
+                
             }
 
             return returnList;
