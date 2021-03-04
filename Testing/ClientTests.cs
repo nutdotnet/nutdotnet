@@ -64,9 +64,9 @@ namespace Testing
         {
             serverFixture.testClient.Connect();
 
-            List<UPS> testData = new List<UPS> { new UPS("testups1"), new UPS("testups2", "test description"),
-                    new UPS("testups3", "test description")};
-            serverFixture.testServer.UPSs.AddRange(testData);
+            List<AbstractUPS> testData = new List<AbstractUPS> { new AbstractUPS("testups1"), new AbstractUPS("testups2", "test description"),
+                    new AbstractUPS("testups3", "test description")};
+            serverFixture.testServer.UPSs = testData.ConvertAll(ups => (ServerUPS)ups);
             long startTicks = DateTime.Now.Ticks;
             List<ClientUPS> upses = serverFixture.testClient.GetUPSes();
             long stopTicks = DateTime.Now.Ticks;
