@@ -14,7 +14,7 @@ namespace Testing
 
         public TestFixture()
         {
-            testServer = new NUTServer();
+            testServer = new NUTServer(0);
             testClient = new NUTClient("localhost", testServer.ListenPort);
         }
 

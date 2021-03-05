@@ -8,31 +8,31 @@ namespace NUTDotNetShared
     {
         public readonly string Name;
         public readonly string Description;
-        public List<string> Clients;
-        public List<string> Commands;
-        public Dictionary<string, string> Variables;
-        public Dictionary<string, string> Rewritables;
-        public Dictionary<string, List<string>> Enumerations;
-        public readonly Dictionary<string, List<string[]>> Ranges;
+        protected List<string> clients;
+        protected List<string> commands;
+        protected Dictionary<string, string> variables;
+        protected Dictionary<string, string> rewritables;
+        protected Dictionary<string, List<string>> enumerations;
+        protected readonly Dictionary<string, List<string[]>> ranges;
 
         public AbstractUPS(string name, string description = "Unavailable")
         {
             Name = name;
             Description = description;
-            Variables = new Dictionary<string, string>();
-            Rewritables = new Dictionary<string, string>();
-            Commands = new List<string>();
-            Enumerations = new Dictionary<string, List<string>>();
-            Ranges = new Dictionary<string, List<string[]>>();
-            Clients = new List<string>();
+            variables = new Dictionary<string, string>();
+            rewritables = new Dictionary<string, string>();
+            commands = new List<string>();
+            enumerations = new Dictionary<string, List<string>>();
+            ranges = new Dictionary<string, List<string[]>>();
+            clients = new List<string>();
         }
 
         public void AddRange(string name, string[] values)
         {
-            if (Ranges.ContainsKey(name))
-                Ranges[name].Add(values);
+            if (ranges.ContainsKey(name))
+                ranges[name].Add(values);
             else
-                Ranges[name] = new List<string[]>() { values };
+                ranges[name] = new List<string[]>() { values };
         }
 
         public bool Equals(AbstractUPS obj)

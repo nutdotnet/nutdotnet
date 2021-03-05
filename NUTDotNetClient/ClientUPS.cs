@@ -8,7 +8,7 @@ namespace NUTDotNetClient
     /// Represents a UPS that is managed by the NUT server. This class provides additional functionality to acquire
     /// data from the server.
     /// </summary>
-    public class ClientUPS : UPS
+    public class ClientUPS : AbstractUPS
     {
         private readonly NUTClient client;
 
@@ -36,8 +36,10 @@ namespace NUTDotNetClient
                     !response[response.Count - 1].Equals("END " + query))
                 throw new Exception("Malformed header or footer in response from server.");
             List<string[]> returnList = new List<string[]>(response.Count - 2);
-            for (int i = 1; i < returnList.Count; i++)
+            for (int i = 1; i <= returnList.Capacity; i++)
             {
+                // Strip out any double quotes.
+                response[i] = response[i].Replace("\"", string.Empty);
                 string[] splitStr = response[i].Split(' ');
                 if (!splitStr[0].Equals(subquery) && !splitStr[1].Equals(Name) && (!(parameter is null) &&
                     splitStr[2].Equals(subquery)))
@@ -54,23 +56,11 @@ namespace NUTDotNetClient
         /// <returns></returns>
         public Dictionary<string, string> GetVariables(bool forceUpdate = false)
         {
-            // string commonQuery = "LIST VAR " + Name;
             if (forceUpdate || variables.Count == 0)
             {
-                /* List<string> response = client.SendQuery(commonQuery);
-                if (!response[0].Equals("BEGIN " + commonQuery) ||
-                    !response[response.Count - 1].Equals("END " + commonQuery))
-                    throw new Exception("Malformed header or footer in response from server."); */
                 List<string[]> response = GetListResponse("VAR");
-                variables = new Dictionary<string, string>();
-                response.ForEach(str => variables.Add(str[3], str[4]));
-                /*foreach (string str in response)
-                {
-                    string[] splitStr = str.Split(' ');
-                    if (splitStr.Length != 4 || splitStr[0].Equals("VAR") || splitStr[1].Equals(Name))
-                        throw new Exception("Unexpected or invalid response from server: " + splitStr.ToString());
-                    variables.Add(splitStr[3], splitStr[4]);
-                }*/
+                variables = new Dictionary<string, string>(response.Count);
+                response.ForEach(str => variables.Add(str[2], str[3]));
             }
             return variables;
         }

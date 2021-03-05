@@ -65,8 +65,8 @@ namespace NUTDotNetClient
             
             if (disposing)
             {
-                streamReader.Close();
-                streamWriter.Close();
+                if (!(client is null))
+                    client.Close();
             }
 
             disposed = true;
