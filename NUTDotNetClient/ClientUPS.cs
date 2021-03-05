@@ -67,105 +67,55 @@ namespace NUTDotNetClient
 
         public Dictionary<string, string> GetRewritables(bool forceUpdate = false)
         {
-            string commonQuery = "LIST RW " + Name;
             if (forceUpdate || rewritables.Count == 0)
             {
-                List<string> response = client.SendQuery(commonQuery);
-                if (!response[0].Equals("BEGIN " + commonQuery) ||
-                    !response[response.Count - 1].Equals("END " + commonQuery))
-                    throw new Exception("Malformed header or footer in response from server.");
+                List<string[]> response = GetListResponse("RW");
                 rewritables = new Dictionary<string, string>();
-                foreach (string str in response)
-                {
-                    string[] splitStr = str.Split(' ');
-                    if (splitStr.Length != 4 || splitStr[0].Equals("RW") || splitStr[1].Equals(Name))
-                        throw new Exception("Unexpected or invalid response from server: " + splitStr.ToString());
-                    rewritables.Add(splitStr[3], splitStr[4]);
-                }
+                response.ForEach(str => rewritables.Add(str[2], str[3]));
             }
             return rewritables;
         }
 
         public List<string> GetCommands(bool forceUpdate = false)
         {
-            string commonQuery = "LIST CMD " + Name;
             if (forceUpdate || commands.Count == 0)
             {
-                List<string> response = client.SendQuery(commonQuery);
-                if (!response[0].Equals("BEGIN " + commonQuery) ||
-                    !response[response.Count - 1].Equals("END " + commonQuery))
-                    throw new Exception("Malformed header or footer in response from server.");
+                List<string[]> response = GetListResponse("CMD");
                 commands = new List<string>();
-                foreach (string str in response)
-                {
-                    string[] splitStr = str.Split(' ');
-                    if (splitStr.Length != 3 || splitStr[0].Equals("CMD") || splitStr[1].Equals(Name))
-                        throw new Exception("Unexpected or invalid response from server: " + splitStr.ToString());
-                    commands.Add(splitStr[2]);
-                }
+                response.ForEach(str => commands.Add(str[2]));
             }
             return commands;
         }
 
         public List<string> GetEnumerations(string enumName, bool forceUpdate = false)
         {
-            string commonQuery = "LIST ENUM " + Name + " " + enumName;
-            if (forceUpdate || !(enumerations[enumName] is null))
+            if (forceUpdate || !enumerations.ContainsKey(enumName))
             {
-                List<string> response = client.SendQuery(commonQuery);
-                if (!response[0].Equals("BEGIN " + commonQuery) ||
-                    !response[response.Count - 1].Equals("END " + commonQuery))
-                    throw new Exception("Malformed header or footer in response from server.");
-                foreach (string str in response)
-                {
-                    string[] splitStr = str.Split(' ');
-                    if (splitStr.Length != 4 || splitStr[0].Equals("ENUM") || splitStr[1].Equals(Name) ||
-                        splitStr[2].Equals(enumName))
-                        throw new Exception("Unexpected or invalid response from server: " + splitStr.ToString());
-                    enumerations[enumName].Add(splitStr[3]);
-                }
+                List<string[]> response = GetListResponse("ENUM", enumName);
+                enumerations[enumName] = new List<string>(response.Count);
+                response.ForEach(str => enumerations[enumName].Add(str[3]));
             }
             return enumerations[enumName];
         }
 
         public List<string[]> GetRanges(string rangeName, bool forceUpdate = false)
         {
-            string commonQuery = "LIST RANGE " + Name + " " + rangeName;
-            if (forceUpdate)
+            if (forceUpdate || !ranges.ContainsKey(rangeName))
             {
-                List<string> response = client.SendQuery(commonQuery);
-                if (!response[0].Equals("BEGIN " + commonQuery) ||
-                    !response[response.Count - 1].Equals("END " + commonQuery))
-                    throw new Exception("Malformed header or footer in response from server.");
-                foreach (string str in response)
-                {
-                    string[] splitStr = str.Split(' ');
-                    if (splitStr.Length != 5 || splitStr[0].Equals("RANGE") || splitStr[1].Equals(Name) ||
-                        splitStr[2].Equals(rangeName))
-                        throw new Exception("Unexpected or invalid response from server: " + splitStr.ToString());
-                    ranges[rangeName].Add(new string[] { splitStr[3], splitStr[4] });
-                }
+                List<string[]> response = GetListResponse("RANGE", rangeName);
+                ranges[rangeName] = new List<string[]>(response.Count);
+                response.ForEach(str => ranges[rangeName].Add(new string[] { str[3], str[4] }));
             }
             return ranges[rangeName];
         }
 
         public List<string> GetClients(bool forceUpdate = false)
         {
-            string commonQuery = "LIST CLIENT " + Name;
             if (forceUpdate || clients.Count == 0)
             {
-                List<string> response = client.SendQuery(commonQuery);
-                if (!response[0].Equals("BEGIN " + commonQuery) ||
-                    !response[response.Count - 1].Equals("END " + commonQuery))
-                    throw new Exception("Malformed header or footer in response from server.");
+                List<string[]> response = GetListResponse("CLIENT");
                 clients = new List<string>();
-                foreach (string str in response)
-                {
-                    string[] splitStr = str.Split(' ');
-                    if (splitStr.Length != 3 || splitStr[0].Equals("CLIENT") || splitStr[1].Equals(Name))
-                        throw new Exception("Unexpected or invalid response from server: " + splitStr.ToString());
-                    clients.Add(splitStr[2]);
-                }
+                response.ForEach(str => clients.Add(str[2]));
             }
             return clients;
         }
