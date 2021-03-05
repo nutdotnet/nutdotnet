@@ -14,7 +14,7 @@ namespace ServerMockupTests
     class DisposableTestData : IDisposable
     {
         public NUTServer Server;
-        public UPS SampleUPS;
+        public ServerUPS SampleUPS;
         public TcpClient Client;
         public StreamReader Reader;
         public StreamWriter Writer;
@@ -149,7 +149,7 @@ namespace ServerMockupTests
         public void TestLegitimateListUPSQuery()
         {
             using DisposableTestData testData = new DisposableTestData(true);
-            testData.Server.UPSs.Add(new UPS("SampleUPS", "A sample UPS."));
+            testData.Server.UPSs.Add(new ServerUPS("SampleUPS", "A sample UPS."));
             testData.Writer.WriteLine("LIST UPS");
             List<string> response = new List<string>(3);
             for (int i = 0; i <= 2; i++)
@@ -158,7 +158,7 @@ namespace ServerMockupTests
             }
 
             Assert.Equal("BEGIN LIST UPS", response[0]);
-            Assert.Equal(testData.Server.UPSs[0].ToString(), response[1]);
+            Assert.Equal("UPS SampleUPS \"A sample UPS.\"", response[1]);
             Assert.Equal("END LIST UPS", response[2]);
         }
 
@@ -166,9 +166,13 @@ namespace ServerMockupTests
         public void TestMultipleListUPSResponses()
         {
             using DisposableTestData testData = new DisposableTestData(true);
-            testData.Server.UPSs.Add(new UPS("TestUPS1", "Test description 1"));
-            testData.Server.UPSs.Add(new UPS("TestUPS2", "Test description 2"));
-            testData.Server.UPSs.Add(new UPS("TestUPS3", null));
+            List<ServerUPS> testUPSes = new List<ServerUPS>()
+            {
+                new ServerUPS("TestUPS1", "Test description 1"),
+                new ServerUPS("TestUPS2", "Test description 2"),
+                new ServerUPS("TestUPS3", null)
+            };
+            testData.Server.UPSs = testUPSes;
             testData.Writer.WriteLine("LIST UPS");
             List<string> response = new List<string>(5);
             for (int i = 0; i <= 4; i++)
@@ -179,7 +183,7 @@ namespace ServerMockupTests
             Assert.Equal("END LIST UPS", response[4]);
             for (int i = 1; i <= 3; i++)
             {
-                Assert.Equal(testData.Server.UPSs[i - 1].ToString(), response[i]);
+                Assert.Equal("UPS " + testUPSes[i - 1].Name + " \"" + testUPSes[i - 1].Description + "\"", response[i]);
             }
         }
     }
@@ -216,14 +220,14 @@ namespace ServerMockupTests
         [Fact]
         public void TestEmptyDictionaries()
         {
-            string expectedResponse = "BEGIN LIST VAR SampleUPS\n\nEND LIST VAR SampleUPS\n";
+            string expectedResponse = "BEGIN LIST VAR SampleUPS\nEND LIST VAR SampleUPS\n";
             using DisposableTestData testData = new DisposableTestData(false);
-            UPS sampleUPS = new UPS("SampleUPS");
+            ServerUPS sampleUPS = new ServerUPS("SampleUPS");
             testData.Server.UPSs.Add(sampleUPS);
             testData.Writer.WriteLine("LIST VAR " + sampleUPS.Name);
             string response = testData.ReadListResponse();
             Assert.Equal(expectedResponse, response);
-            expectedResponse = "BEGIN LIST RW SampleUPS\n\nEND LIST RW SampleUPS\n";
+            expectedResponse = "BEGIN LIST RW SampleUPS\nEND LIST RW SampleUPS\n";
             testData.Writer.WriteLine("LIST RW " + sampleUPS.Name);
             response = testData.ReadListResponse();
             Assert.Equal(expectedResponse, response);
@@ -235,7 +239,7 @@ namespace ServerMockupTests
             string expectedResponse = "BEGIN LIST VAR SampleUPS\nVAR SampleUPS testvar \"testval\"\n" +
                 "END LIST VAR SampleUPS\n";
             using DisposableTestData testData = new DisposableTestData(false);
-            UPS sampleUPS = new UPS("SampleUPS");
+            ServerUPS sampleUPS = new ServerUPS("SampleUPS");
             sampleUPS.Variables.Add("testvar", "testval");
             sampleUPS.Rewritables.Add("testrw", "testrwval");
             testData.Server.UPSs.Add(sampleUPS);
@@ -258,9 +262,9 @@ namespace ServerMockupTests
         [Fact]
         public void TestEmptySingles()
         {
-            string expectedResponse = "BEGIN LIST CMD SampleUPS\n\nEND LIST CMD SampleUPS\n";
+            string expectedResponse = "BEGIN LIST CMD SampleUPS\nEND LIST CMD SampleUPS\n";
             using DisposableTestData testData = new DisposableTestData(false);
-            UPS sampleUPS = new UPS("SampleUPS");
+            ServerUPS sampleUPS = new ServerUPS("SampleUPS");
             testData.Server.UPSs.Add(sampleUPS);
             testData.Writer.WriteLine("LIST CMD " + sampleUPS.Name);
             string response = testData.ReadListResponse();
@@ -275,7 +279,7 @@ namespace ServerMockupTests
             string expectedClientResponse = "BEGIN LIST CLIENT SampleUPS\nCLIENT SampleUPS 127.0.0.1\n" +
                 "CLIENT SampleUPS ::1\nEND LIST CLIENT SampleUPS\n";
             using DisposableTestData testData = new DisposableTestData(false);
-            UPS sampleUPS = new UPS("SampleUPS");
+            ServerUPS sampleUPS = new ServerUPS("SampleUPS");
             sampleUPS.Commands.Add("testcmd");
             sampleUPS.Clients.Add("127.0.0.1");
             sampleUPS.Clients.Add("::1");
@@ -296,7 +300,7 @@ namespace ServerMockupTests
         {
             string expectedResponse = "ERR INVALID-ARGUMENT\n";
             using DisposableTestData testData = new DisposableTestData(true);
-            UPS sampleUPS = new UPS("SampleUPS");
+            ServerUPS sampleUPS = new ServerUPS("SampleUPS");
             testData.Server.UPSs.Add(sampleUPS);
             testData.Writer.WriteLine("LIST ENUM " + sampleUPS.Name);
             string response = testData.ReadListResponse();
@@ -306,9 +310,9 @@ namespace ServerMockupTests
         [Fact]
         public void TestInvalidEnumName()
         {
-            string expectedResponse = "BEGIN LIST ENUM SampleUPS foobar\n\nEND LIST ENUM SampleUPS foobar\n";
+            string expectedResponse = "BEGIN LIST ENUM SampleUPS foobar\nEND LIST ENUM SampleUPS foobar\n";
             using DisposableTestData testData = new DisposableTestData(true);
-            UPS sampleUPS = new UPS("SampleUPS");
+            ServerUPS sampleUPS = new ServerUPS("SampleUPS");
             testData.Server.UPSs.Add(sampleUPS);
             testData.Writer.WriteLine("LIST ENUM " + sampleUPS.Name + " foobar");
             string response = testData.ReadListResponse();
@@ -321,8 +325,8 @@ namespace ServerMockupTests
             string expectedResponse = "BEGIN LIST ENUM SampleUPS testenum\nENUM SampleUPS testenum \"1\"\n" +
                 "ENUM SampleUPS testenum \"2\"\nENUM SampleUPS testenum \"3\"\nEND LIST ENUM SampleUPS testenum\n";
             using DisposableTestData testData = new DisposableTestData(true);
-            UPS sampleUPS = new UPS("SampleUPS");
-            sampleUPS.Enumerations.Add("testenum", new string[] { "1", "2", "3" });
+            ServerUPS sampleUPS = new ServerUPS("SampleUPS");
+            sampleUPS.Enumerations.Add("testenum", new List<string> { "1", "2", "3" });
             testData.Server.UPSs.Add(sampleUPS);
             testData.Writer.WriteLine("LIST ENUM " + sampleUPS.Name + " testenum");
             string response = testData.ReadListResponse();
@@ -338,7 +342,7 @@ namespace ServerMockupTests
         {
             string expectedResponse = "ERR INVALID-ARGUMENT\n";
             using DisposableTestData testData = new DisposableTestData(true);
-            UPS sampleUPS = new UPS("SampleUPS");
+            ServerUPS sampleUPS = new ServerUPS("SampleUPS");
             testData.Server.UPSs.Add(sampleUPS);
             testData.Writer.WriteLine("LIST RANGE " + sampleUPS.Name);
             string response = testData.ReadListResponse();
@@ -350,7 +354,7 @@ namespace ServerMockupTests
         {
             string expectedResponse = "BEGIN LIST RANGE SampleUPS foobar\nEND LIST RANGE SampleUPS foobar\n";
             using DisposableTestData testData = new DisposableTestData(true);
-            UPS sampleUPS = new UPS("SampleUPS");
+            ServerUPS sampleUPS = new ServerUPS("SampleUPS");
             testData.Server.UPSs.Add(sampleUPS);
             testData.Writer.WriteLine("LIST RANGE " + sampleUPS.Name + " foobar");
             string response = testData.ReadListResponse();
@@ -363,7 +367,7 @@ namespace ServerMockupTests
             string expectedResponse = "BEGIN LIST RANGE SampleUPS testrange\nRANGE SampleUPS testrange \"1\" \"2\"\n" +
                 "RANGE SampleUPS testrange \"3\" \"4\"\nEND LIST RANGE SampleUPS testrange\n";
             using DisposableTestData testData = new DisposableTestData(true);
-            UPS sampleUPS = new UPS("SampleUPS");
+            ServerUPS sampleUPS = new ServerUPS("SampleUPS");
             sampleUPS.AddRange("testrange", new string[] { "1", "2" });
             sampleUPS.AddRange("testrange", new string[] { "3", "4" });
             testData.Server.UPSs.Add(sampleUPS);

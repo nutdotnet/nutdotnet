@@ -1,17 +1,18 @@
 ﻿using NUTDotNetShared;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net.Sockets;
+using System.Text;
 
 namespace NUTDotNetClient
 {
     public class NUTClient
     {
+        #region Properties
         public string Host { get; }
-        public ushort Port { get; }
+        public int Port { get; }
         public string Username { get; }
-        private string Password;
-        private TcpClient client;
         public bool IsConnected
         {
             get
@@ -22,9 +23,18 @@ namespace NUTDotNetClient
                     return client.Connected;
             }
         }
-
         public string ServerVersion { get; private set; }
         public string ProtocolVersion { get; private set; }
+        #endregion
+
+        #region Fields
+        private string Password;
+        private TcpClient client;
+        private bool disposed;
+        private StreamWriter streamWriter;
+        private StreamReader streamReader;
+        private List<ClientUPS> upses;
+        #endregion
 
         /// <summary>
         /// Creates an object allowing for communication with a NUT server.
@@ -33,12 +43,33 @@ namespace NUTDotNetClient
         /// <param name="username"></param>
         /// <param name="password"></param>
         /// <param name="port"></param>
-        public NUTClient(string host, string username = "", string password = "", ushort port = 3493)
+        public NUTClient(string host, int port = 3493, string username = "", string password = "")
         {
             Host = host;
             Port = port;
             Username = username;
             Password = password;
+            upses = new List<ClientUPS>();
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposed)
+                return;
+            
+            if (disposing)
+            {
+                if (!(client is null))
+                    client.Close();
+            }
+
+            disposed = true;
         }
 
         public void Connect()
@@ -47,6 +78,12 @@ namespace NUTDotNetClient
                 throw new InvalidOperationException("Cannot connect while client is still connected.");
 
             client = new TcpClient(Host, Port);
+            streamWriter = new StreamWriter(client.GetStream(), NUTCommon.PROTO_ENCODING)
+            {
+                NewLine = NUTCommon.NewLine,
+                AutoFlush = true
+            };
+            streamReader = new StreamReader(client.GetStream(), NUTCommon.PROTO_ENCODING);
             // Verify that the client is allowed access by attempting to get basic data.
             GetBasicDetails();
         }
@@ -56,7 +93,9 @@ namespace NUTDotNetClient
             if (!IsConnected)
                 throw new InvalidOperationException("Cannot disconnect while client is disconnected.");
 
-            Response attemptDisconnect = SendQuery("LOGOUT");
+            SendQuery("LOGOUT");
+            streamReader.Close();
+            streamWriter.Close();
             client.Close();
         }
 
@@ -68,10 +107,8 @@ namespace NUTDotNetClient
         {
             try
             {
-                Response getServerVersion = SendQuery("VER");
-                ServerVersion = getServerVersion.Data;
-                Response getProtocolVersion = SendQuery("NETVER");
-                ProtocolVersion = getProtocolVersion.Data;
+                ServerVersion = SendQuery("VER")[0];
+                ProtocolVersion = SendQuery("NETVER")[0];
             }
             catch (NUTException nutEx)
             {
@@ -87,6 +124,30 @@ namespace NUTDotNetClient
         }
 
         /// <summary>
+        /// Queries the server for a list of managed UPSes.
+        /// </summary>
+        /// <returns>A list of UPS objects found on the server, or an empty list.</returns>
+        public List<ClientUPS> GetUPSes(bool forceUpdate = false)
+        {
+            if (forceUpdate || upses.Count == 0)
+            {
+                List<string> listUpsResponse = SendQuery("LIST UPS");
+                foreach (string line in listUpsResponse)
+                {
+                    if (line.StartsWith("UPS"))
+                    {
+                        // Strip out any extraneous quotes
+                        string strippedLine = line.Replace("\"", string.Empty);
+                        string[] splitLine = strippedLine.Split(new char[] { ' ' }, 3);
+                        upses.Add(new ClientUPS(this, splitLine[1], splitLine[2]));
+                    }
+                }
+            }
+            
+            return upses;
+        }
+
+        /// <summary>
         /// Tells the NUT server that we're depending on it for power, so it will wait for us to disconnect before
         /// shutting down.
         /// </summary>
@@ -96,28 +157,39 @@ namespace NUTDotNetClient
             //Response userAuth = SendQuery()
         }
 
-        private Response SendQuery(string query)
+        /// <summary>
+        /// Sends a query to the server, then decides how to handle the response. An error will be thrown if necessary.
+        /// </summary>
+        /// <param name="query"></param>
+        /// <returns></returns>
+        public List<string> SendQuery(string query)
         {
             if (!IsConnected)
                 throw new Exception("Attempted to send a query while disconnected.");
 
-            string response;
-            DateTime querySent;
-            DateTime responseReceived;
-
-            NetworkStream stream = client.GetStream();
-            StreamWriter streamWriter = new StreamWriter(stream, NUTCommon.PROTO_ENCODING);
-            streamWriter.NewLine = NUTCommon.NewLine;
-            StreamReader streamReader = new StreamReader(stream, NUTCommon.PROTO_ENCODING);
-
-            querySent = DateTime.Now;
             streamWriter.WriteLine(query);
-            streamWriter.Flush();
+            string readData = streamReader.ReadLine();
 
-            response = streamReader.ReadLine();
-            responseReceived = DateTime.Now;
+            if (readData == null || readData.Equals(String.Empty))
+                throw new ArgumentException("Unexpected null or empty response returned.");
+            if (readData.StartsWith("ERR "))
+            {
+                throw new NUTException(readData, Response.ParseErrorCode(readData));
+            }
 
-            return new Response(response, querySent, responseReceived);
+            List<string> returnList = new List<string>() { readData };
+            // Multiline response, begin reading in.
+            if (readData.StartsWith("BEGIN"))
+            {
+                while (!readData.StartsWith("END"))
+                {
+                    readData = streamReader.ReadLine();
+                    returnList.Add(readData);
+                }
+                
+            }
+
+            return returnList;
         }
     }
 }

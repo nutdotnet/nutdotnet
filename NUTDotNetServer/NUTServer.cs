@@ -21,7 +21,7 @@ namespace NUTDotNetServer
         // a connection.
         public List<IPAddress> AuthorizedClients { get; set; }
         // UPSs that are configured for this server.
-        public List<UPS> UPSs;
+        public List<ServerUPS> UPSs;
         // If given autoassign port number (0), this will be invalid until the listener has started.
         public int ListenPort
         {
@@ -66,7 +66,7 @@ namespace NUTDotNetServer
             ListenAddress = IPAddress.Any;
             AuthorizedClients = new List<IPAddress>();
             connectedClients = new List<TcpClient>();
-            UPSs = new List<UPS>();
+            UPSs = new List<ServerUPS>();
             tcpListener = new TcpListener(IPAddress.Any, listenPort);
             cancellationTokenSource = new CancellationTokenSource();
             cancellationToken = cancellationTokenSource.Token;
@@ -163,6 +163,7 @@ namespace NUTDotNetServer
                 }
 
                 readLine = streamReader.ReadLine();
+                Debug.WriteLine(newClient.Client.RemoteEndPoint.ToString() + " says " + readLine);
                 // If the client is not authorized, then any command besides LOGOUT will result in an A.D error.
                 if (!readLine.Equals("LOGOUT") & !isAuthorized)
                 {
@@ -183,6 +184,7 @@ namespace NUTDotNetServer
                     else if (readLine.Equals("LOGOUT"))
                     {
                         streamWriter.WriteLine("OK Goodbye");
+                        break;
                     }
                     else
                     {
@@ -192,8 +194,14 @@ namespace NUTDotNetServer
                 if (singleQueryMode)
                     break;
             }
+            Debug.WriteLine("Client " + newClient.Client.RemoteEndPoint.ToString() + " has disconnected.");
             streamReader.Dispose();
-            streamWriter.Dispose();
+            streamWriter.Dispose();            
+        }
+
+        private string FormatLine(string format, string val1, string val2 = null)
+        {
+            return string.Format(format, val1, val2);
         }
 
         // Valid quieries for retrieving properties of a UPS.
@@ -208,14 +216,14 @@ namespace NUTDotNetServer
                 string[] dividedQuery = query.Split(null, 3);
                 string subquery = dividedQuery[0];
                 string upsName = dividedQuery.Length >= 2 ? dividedQuery[1] : string.Empty;
-                UPS upsObject;
+                ServerUPS upsObject;
                 string varName = dividedQuery.Length >= 3 ? dividedQuery[2] : string.Empty;
 
                 if (subquery.Equals("UPS"))
                 {
                     response.Append("BEGIN LIST UPS" + NUTCommon.NewLine);
-                    foreach (UPS ups in UPSs)
-                        response.Append(ups + NUTCommon.NewLine);
+                    foreach (ServerUPS ups in UPSs)
+                        response.AppendFormat("UPS {0} \"{1}\"{2}", ups.Name, ups.Description, NUTCommon.NewLine);
                     response.Append("END LIST UPS" + NUTCommon.NewLine);
                 }
                 else if (!upsName.Equals(string.Empty) && ValidUPSQueries.Contains(subquery))
@@ -223,13 +231,19 @@ namespace NUTDotNetServer
                     upsObject = GetUPSByName(upsName);
                     response.AppendFormat("BEGIN LIST {0} {1}{2}", subquery, upsName, NUTCommon.NewLine);
                     if (subquery.Equals("VAR"))
-                        response.Append(upsObject.DictionaryToString("VAR", upsObject.Variables));
+                        foreach (KeyValuePair<string, string> kvp in upsObject.Variables)
+                            response.AppendFormat("{0} {1} {2} \"{3}\"{4}", subquery, upsObject.Name, kvp.Key, kvp.Value,
+                                NUTCommon.NewLine);
                     else if (subquery.Equals("RW"))
-                        response.Append(upsObject.DictionaryToString("RW", upsObject.Rewritables));
+                        foreach (KeyValuePair<string, string> kvp in upsObject.Rewritables)
+                            response.AppendFormat("{0} {1} {2} \"{3}\"{4}", subquery, upsObject.Name, kvp.Key, kvp.Value,
+                                NUTCommon.NewLine);
                     else if (subquery.Equals("CMD"))
-                        response.Append(upsObject.ListToString("CMD", upsObject.Commands));
+                        upsObject.Commands.ForEach(str => response.AppendFormat("{0} {1} {2}{3}", subquery,
+                            upsObject.Name, str, NUTCommon.NewLine));
                     else if (subquery.Equals("CLIENT"))
-                        response.Append(upsObject.ListToString("CLIENT", upsObject.Clients));
+                        upsObject.Clients.ForEach(str => response.AppendFormat("{0} {1} {2}{3}", subquery,
+                            upsObject.Name, str, NUTCommon.NewLine));
                     response.AppendFormat("END LIST {0} {1}{2}", subquery, upsName, NUTCommon.NewLine);
                 }
                 else if (!varName.Equals(string.Empty) && ValidUPSPropQueries.Contains(subquery))
@@ -258,7 +272,7 @@ namespace NUTDotNetServer
             return response.ToString();
         }
 
-        public UPS GetUPSByName(string name)
+        public ServerUPS GetUPSByName(string name)
         {
             for (int i = 0; i < UPSs.Count; i++)
             {
