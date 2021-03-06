@@ -163,6 +163,8 @@ namespace NUTDotNetServer
                 }
 
                 readLine = streamReader.ReadLine();
+                // Split the query around whitespace characters.
+                string[] splitLine = readLine.Split();
                 Debug.WriteLine(newClient.Client.RemoteEndPoint.ToString() + " says " + readLine);
                 // If the client is not authorized, then any command besides LOGOUT will result in an A.D error.
                 if (!readLine.Equals("LOGOUT") & !isAuthorized)
@@ -171,8 +173,10 @@ namespace NUTDotNetServer
                 }
                 else
                 {
-                    if (readLine.StartsWith("LIST ") && readLine.Length > 5)
-                        streamWriter.Write(ParseListQuery(readLine.Substring(5)));
+                    if (splitLine[0].Equals("LIST") && splitLine.Length > 1)
+                        streamWriter.Write(ParseListQuery(splitLine));
+                    else if (splitLine[0].Equals("INSTCMD") && splitLine.Length == 3)
+                        streamWriter.Write(DoInstCmd(splitLine[1], splitLine[2]));
                     else if (readLine.Equals("VER"))
                     {
                         streamWriter.WriteLine(ServerVersion);
@@ -196,28 +200,38 @@ namespace NUTDotNetServer
             }
             Debug.WriteLine("Client " + newClient.Client.RemoteEndPoint.ToString() + " has disconnected.");
             streamReader.Dispose();
-            streamWriter.Dispose();            
+            streamWriter.Dispose();
         }
 
-        private string FormatLine(string format, string val1, string val2 = null)
+        private string DoInstCmd(string upsName, string cmdName)
         {
-            return string.Format(format, val1, val2);
+            try
+            {
+                ServerUPS upsObject = GetUPSByName(upsName);
+                if (!upsObject.Commands.ContainsKey(cmdName))
+                    throw new Exception("ERR CMD-NOT-SUPPORTED");
+                upsObject.Commands[cmdName].Invoke();
+                return "OK" + NUTCommon.NewLine;
+            }
+            catch (Exception ex)
+            {
+                return ex.Message + NUTCommon.NewLine;
+            }
         }
 
         // Valid quieries for retrieving properties of a UPS.
         private static List<string> ValidUPSQueries = new List<string> { "VAR", "RW", "CMD", "CLIENT" };
         // Valid ways to query a specified property of a UPS.
         private static List<string> ValidUPSPropQueries = new List<string> { "ENUM", "RANGE" };
-        private string ParseListQuery(string query)
+        private string ParseListQuery(string[] splitQuery)
         {
             StringBuilder response = new StringBuilder();
             try
             {
-                string[] dividedQuery = query.Split(null, 3);
-                string subquery = dividedQuery[0];
-                string upsName = dividedQuery.Length >= 2 ? dividedQuery[1] : string.Empty;
+                string subquery = splitQuery.Length >= 2 ? splitQuery[1] : string.Empty;
+                string upsName = splitQuery.Length >= 3 ? splitQuery[2] : string.Empty;
                 ServerUPS upsObject;
-                string varName = dividedQuery.Length >= 3 ? dividedQuery[2] : string.Empty;
+                string varName = splitQuery.Length >= 4 ? splitQuery[3] : string.Empty;
 
                 if (subquery.Equals("UPS"))
                 {
@@ -232,15 +246,16 @@ namespace NUTDotNetServer
                     response.AppendFormat("BEGIN LIST {0} {1}{2}", subquery, upsName, NUTCommon.NewLine);
                     if (subquery.Equals("VAR"))
                         foreach (KeyValuePair<string, string> kvp in upsObject.Variables)
-                            response.AppendFormat("{0} {1} {2} \"{3}\"{4}", subquery, upsObject.Name, kvp.Key, kvp.Value,
-                                NUTCommon.NewLine);
+                            response.AppendFormat("{0} {1} {2} \"{3}\"{4}", subquery, upsObject.Name, kvp.Key,
+                                kvp.Value, NUTCommon.NewLine);
                     else if (subquery.Equals("RW"))
                         foreach (KeyValuePair<string, string> kvp in upsObject.Rewritables)
-                            response.AppendFormat("{0} {1} {2} \"{3}\"{4}", subquery, upsObject.Name, kvp.Key, kvp.Value,
-                                NUTCommon.NewLine);
+                            response.AppendFormat("{0} {1} {2} \"{3}\"{4}", subquery, upsObject.Name, kvp.Key,
+                                kvp.Value, NUTCommon.NewLine);
                     else if (subquery.Equals("CMD"))
-                        upsObject.Commands.ForEach(str => response.AppendFormat("{0} {1} {2}{3}", subquery,
-                            upsObject.Name, str, NUTCommon.NewLine));
+                        foreach (KeyValuePair<string, Action> kvp in upsObject.Commands)
+                            response.AppendFormat("{0} {1} {2}{3}", subquery, upsObject.Name, kvp.Key,
+                                NUTCommon.NewLine);
                     else if (subquery.Equals("CLIENT"))
                         upsObject.Clients.ForEach(str => response.AppendFormat("{0} {1} {2}{3}", subquery,
                             upsObject.Name, str, NUTCommon.NewLine));

@@ -130,7 +130,7 @@ namespace ServerMockupTests
             using DisposableTestData testDat = new DisposableTestData(true);
             testDat.Writer.WriteLine("LIST ");
             string response = testDat.Reader.ReadLine();
-            Assert.Equal("ERR UNKNOWN-COMMAND", response);
+            Assert.Equal("ERR INVALID-ARGUMENT", response);
         }
 
         [Fact]
@@ -280,7 +280,7 @@ namespace ServerMockupTests
                 "CLIENT SampleUPS ::1\nEND LIST CLIENT SampleUPS\n";
             using DisposableTestData testData = new DisposableTestData(false);
             ServerUPS sampleUPS = new ServerUPS("SampleUPS");
-            sampleUPS.Commands.Add("testcmd");
+            sampleUPS.Commands.Add("testcmd", null);
             sampleUPS.Clients.Add("127.0.0.1");
             sampleUPS.Clients.Add("::1");
             testData.Server.UPSs.Add(sampleUPS);
