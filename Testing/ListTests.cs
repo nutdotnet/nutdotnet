@@ -1,6 +1,7 @@
 ﻿using NUTDotNetClient;
 using NUTDotNetServer;
 using NUTDotNetShared;
+using System;
 using System.Collections.Generic;
 using Xunit;
 
@@ -77,16 +78,16 @@ namespace Testing
         public void GetUPSCommandsList()
         {
             SetupTestData();
-            List<string> testVars = new List<string>
+            Dictionary<string, Action> testVars = new Dictionary<string, Action>
             {
-                { "cmdName1" },
-                { "cmdName2" },
-                { "cmdName3" }
+                { "cmdName1", null },
+                { "cmdName2", null },
+                { "cmdName3", null }
             };
             testFixture.testServer.UPSs[0].Commands = testVars;
             List<string> getVars = testFixture.testClient.GetUPSes()[0].GetCommands();
             ClearTestData();
-            Assert.Equal(testVars, getVars);
+            Assert.All(getVars, var => testVars.ContainsKey(var));
         }
 
         [Fact]

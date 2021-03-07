@@ -50,6 +50,17 @@ namespace NUTDotNetClient
         }
 
         /// <summary>
+        /// Sends an INSTCMD query to the NUT server for execution. Throws an error if unsuccessful.
+        /// </summary>
+        /// <param name="commandId">The index of the command found from calling GetCommands.</param>
+        public void DoInstantCommand(int commandId)
+        {
+            if (commands.Count == 0)
+                GetCommands();
+            List<string> response = client.SendQuery(string.Format("INSTCMD {0} {1}", Name, commands[commandId]));
+        }
+
+        /// <summary>
         /// Gets the variables assigned to this UPS from the server, in a name-value format.
         /// </summary>
         /// <param name="forceUpdate">Download the list of variables from the server even if one is cached here.</param>
