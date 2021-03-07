@@ -7,6 +7,8 @@ namespace NUTDotNetServer
 {
     public class ServerUPS : AbstractUPS
     {
+        new Dictionary<string, Action> commands;
+
         #region Properties
         public List<string> Clients
         {
@@ -14,7 +16,10 @@ namespace NUTDotNetServer
             set => clients = value;
         }
 
-        public List<string> Commands
+        /// <summary>
+        /// Each command has a name, and an action (function) with no data returned.
+        /// </summary>
+        public Dictionary<string, Action> Commands
         {
             get => commands;
             set => commands = value;
@@ -41,7 +46,7 @@ namespace NUTDotNetServer
 
         public ServerUPS(string name, string description = null) : base(name, description)
         {
-
+            this.commands = new Dictionary<string, Action>();
         }
 
         #region Specfic string methods
