@@ -163,6 +163,8 @@ namespace NUTDotNetServer
                 }
 
                 readLine = streamReader.ReadLine();
+                // Remove quotes
+                readLine = readLine.Replace("\"", string.Empty);
                 // Split the query around whitespace characters.
                 string[] splitLine = readLine.Split();
                 Debug.WriteLine(newClient.Client.RemoteEndPoint.ToString() + " says " + readLine);
@@ -177,6 +179,8 @@ namespace NUTDotNetServer
                         streamWriter.Write(ParseListQuery(splitLine));
                     else if (splitLine[0].Equals("INSTCMD") && splitLine.Length == 3)
                         streamWriter.Write(DoInstCmd(splitLine[1], splitLine[2]));
+                    else if (splitLine[0].Equals("SET") && splitLine.Length == 5)
+                        streamWriter.Write(DoSetVar(splitLine[2], splitLine[3], splitLine[4]));
                     else if (readLine.Equals("VER"))
                     {
                         streamWriter.WriteLine(ServerVersion);
@@ -201,6 +205,22 @@ namespace NUTDotNetServer
             Debug.WriteLine("Client " + newClient.Client.RemoteEndPoint.ToString() + " has disconnected.");
             streamReader.Dispose();
             streamWriter.Dispose();
+        }
+
+        private string DoSetVar(string upsName, string varName, string value)
+        {
+            try
+            {
+                ServerUPS upsObject = GetUPSByName(upsName);
+                if (!upsObject.Rewritables.ContainsKey(varName))
+                    throw new Exception("ERR VAR-NOT-SUPPORTED");
+                upsObject.Rewritables[varName] = value;
+                return "OK" + NUTCommon.NewLine;
+            }
+            catch (Exception ex)
+            {
+                return ex.Message + NUTCommon.NewLine;
+            }
         }
 
         private string DoInstCmd(string upsName, string cmdName)
