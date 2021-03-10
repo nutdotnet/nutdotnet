@@ -57,7 +57,23 @@ namespace NUTDotNetClient
         {
             if (commands.Count == 0)
                 GetCommands();
-            List<string> response = client.SendQuery(string.Format("INSTCMD {0} {1}", Name, commands[commandId]));
+            client.SendQuery(string.Format("INSTCMD {0} {1}", Name, commands[commandId]));
+        }
+
+        /// <summary>
+        /// Sends a query to the NUT server to set a rewritable variable. Any errors will be thrown, otherwise nothing
+        /// is returned on success.
+        /// </summary>
+        /// <param name="rewritableKey">The key (variable name) to be set, found in the Rewritables collection.</param>
+        /// <param name="value">The value that this variable should be set to.</param>
+        public void SetVariable(string rewritableKey, string value)
+        {
+            if (rewritables.Count == 0)
+                GetRewritables();
+            if (!rewritables.ContainsKey(rewritableKey))
+                throw new KeyNotFoundException("Attempted to set a non-existent variable.");
+            client.SendQuery(string.Format("SET VAR {0} {1} \"{2}\"", Name, rewritableKey, value));
+            GetRewritables(true);
         }
 
         /// <summary>

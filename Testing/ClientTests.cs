@@ -120,5 +120,32 @@ namespace Testing
             clientUPS.DoInstantCommand(0);
             ClearTestData();
         }
+
+        [Fact]
+        public void TestBadSetVarQuery()
+        {
+            SetupTestData();
+            ServerUPS testUPS = new ServerUPS("SetVarTestUPS");
+            testUPS.Rewritables.Add("testRW", "initialValue");
+            testFixture.testServer.UPSs.Add(testUPS);
+
+            ClientUPS clientUPS = testFixture.testClient.GetUPSes()[0];
+            Assert.Throws<KeyNotFoundException>(() => clientUPS.SetVariable("badVar", "badVal"));
+            ClearTestData();
+        }
+
+        [Fact]
+        public void TestGoodSetVarQuery()
+        {
+            SetupTestData();
+            ServerUPS testUPS = new ServerUPS("SetVarTestUPS");
+            testUPS.Rewritables.Add("testRW", "initialValue");
+            testFixture.testServer.UPSs.Add(testUPS);
+
+            ClientUPS clientUPS = testFixture.testClient.GetUPSes()[0];
+            clientUPS.SetVariable("testRW", "newValue");
+            ClearTestData();
+            Assert.Equal(testUPS.Rewritables["testRW"], clientUPS.GetRewritables()["testRW"]);
+        }
     }
 }
