@@ -19,7 +19,7 @@ namespace NUTDotNetServer
         public IPAddress ListenAddress { get; }
         // List of clients allowed to execute commands. Even unauthorized clients are allowed to establish
         // a connection.
-        public List<IPAddress> AuthorizedClients { get; set; }
+        public List<IPAddress> AuthorizedClientAddresses { get; set; }
         // UPSs that are configured for this server.
         public List<ServerUPS> UPSs;
         // If given autoassign port number (0), this will be invalid until the listener has started.
@@ -53,7 +53,6 @@ namespace NUTDotNetServer
 
         #region Private Members
         private bool disposed = false;
-        private string Password;
         private TcpListener tcpListener;
         List<TcpClient> connectedClients;
         private CancellationToken cancellationToken;
@@ -64,7 +63,7 @@ namespace NUTDotNetServer
         public NUTServer(ushort listenPort = NUTCommon.DEFAULT_PORT, bool singleQuery = false)
         {
             ListenAddress = IPAddress.Any;
-            AuthorizedClients = new List<IPAddress>();
+            AuthorizedClientAddresses = new List<IPAddress>();
             connectedClients = new List<TcpClient>();
             UPSs = new List<ServerUPS>();
             tcpListener = new TcpListener(IPAddress.Any, listenPort);
@@ -133,16 +132,20 @@ namespace NUTDotNetServer
         private bool IsClientAuthorized(TcpClient client)
         {
             // Authorization system is disabled when no clients are on the list.
-            if (AuthorizedClients.Count == 0)
+            if (AuthorizedClientAddresses.Count == 0)
                 return true;
 
             IPEndPoint clientEndpoint = (IPEndPoint)client.Client.RemoteEndPoint;
-            return AuthorizedClients.Contains(clientEndpoint.Address);
+            return AuthorizedClientAddresses.Contains(clientEndpoint.Address);
         }
 
         void HandleNewClient(TcpClient newClient)
         {
             bool isAuthorized = IsClientAuthorized(newClient);
+            // Authentication details passed from the client during this session. Will determine is they can execute
+            // certain commands.
+            string sessionUsername = "";
+            string sessionPassword = "";
 
             NetworkStream clientNetStream = newClient.GetStream();
             StreamReader streamReader = new StreamReader(clientNetStream, NUTCommon.PROTO_ENCODING);
@@ -189,6 +192,45 @@ namespace NUTDotNetServer
                     {
                         streamWriter.WriteLine(NETVER);
                     }
+                    else if (splitLine[0].Equals("USERNAME"))
+                    {
+                        if (splitLine.Length != 2)
+                        {
+                            streamWriter.WriteLine("ERR INVALID-ARGUMENT");
+                            continue;
+                        }
+                        else if (!string.IsNullOrEmpty(sessionUsername))
+                        {
+                            streamWriter.WriteLine("ERR ALREADY-SET-USERNAME");
+                            continue;
+                        }
+                        sessionUsername = splitLine[1];
+                        streamWriter.WriteLine("OK");
+                    }
+                    else if (splitLine[0].Equals("PASSWORD"))
+                    {
+                        if (splitLine.Length != 2)
+                        {
+                            streamWriter.WriteLine("ERR INVALID-ARGUMENT");
+                            continue;
+                        }
+                        else if (!string.IsNullOrEmpty(sessionPassword))
+                        {
+                            streamWriter.WriteLine("ERR ALREADY-SET-PASSWORD");
+                            continue;
+                        }
+                        sessionPassword = splitLine[1];
+                        streamWriter.WriteLine("OK");
+                    }
+                    /*else if (splitLine[0].Equals("LOGIN"))
+                    {
+                        if (splitLine.Length > 2)
+                        {
+                            streamWriter.WriteLine("ERR INVALID-ARGUMENT");
+                            continue;
+                        }
+
+                    }*/
                     else if (readLine.Equals("LOGOUT"))
                     {
                         streamWriter.WriteLine("OK Goodbye");
@@ -206,6 +248,17 @@ namespace NUTDotNetServer
             streamReader.Dispose();
             streamWriter.Dispose();
         }
+
+        /*private string ClientLogin(string upsName, string clientAddr)
+        {
+            try
+            {
+                ServerUPS upsObject = GetUPSByName(upsName);
+                if (upsObject.Clients.Contains(clientAddr))
+                    throw new Exception("ERR ALREADY-LOGGED-IN");
+
+            }
+        }*/
 
         private string DoSetVar(string upsName, string varName, string value)
         {

@@ -14,7 +14,6 @@ namespace ServerMockupTests
     class DisposableTestData : IDisposable
     {
         public NUTServer Server;
-        public ServerUPS SampleUPS;
         public TcpClient Client;
         public StreamReader Reader;
         public StreamWriter Writer;
@@ -111,7 +110,7 @@ namespace ServerMockupTests
         public void TryUnauthedClient()
         {
             using DisposableTestData testDat = new DisposableTestData(false);
-            testDat.Server.AuthorizedClients.Add(new IPAddress(new byte[] { 192, 0, 2, 0 }));
+            testDat.Server.AuthorizedClientAddresses.Add(new IPAddress(new byte[] { 192, 0, 2, 0 }));
 
             testDat.Writer.WriteLine("VER");
             string result = testDat.Reader.ReadLine();
@@ -119,6 +118,56 @@ namespace ServerMockupTests
             testDat.Writer.WriteLine("LOGOUT");
             result = testDat.Reader.ReadLine();
             Assert.Equal("OK Goodbye", result);
+        }
+
+        [Fact]
+        public void TestUsernameQuery()
+        {
+            using DisposableTestData testDat = new DisposableTestData(false);
+            string username = "TestUser";
+            string result;
+
+            // Attempt a username query with nothing else.
+            testDat.Writer.WriteLine("USERNAME");
+            result = testDat.Reader.ReadLine();
+            Assert.Equal("ERR INVALID-ARGUMENT", result);
+            // Attempt username with spaces (invalid).
+            testDat.Writer.WriteLine("USERNAME a user");
+            result = testDat.Reader.ReadLine();
+            Assert.Equal("ERR INVALID-ARGUMENT", result);
+            // Attempt a valid set.
+            testDat.Writer.WriteLine("USERNAME " + username);
+            result = testDat.Reader.ReadLine();
+            Assert.Equal("OK", result);
+            // Attempt to set the username again.
+            testDat.Writer.WriteLine("USERNAME " + username);
+            result = testDat.Reader.ReadLine();
+            Assert.Equal("ERR ALREADY-SET-USERNAME", result);
+        }
+
+        [Fact]
+        public void TestPasswordQuery()
+        {
+            using DisposableTestData testDat = new DisposableTestData(false);
+            string password = "TestPassword";
+            string result;
+
+            // Attempt a password query with nothing else.
+            testDat.Writer.WriteLine("PASSWORD");
+            result = testDat.Reader.ReadLine();
+            Assert.Equal("ERR INVALID-ARGUMENT", result);
+            // Attempt password with spaces (invalid).
+            testDat.Writer.WriteLine("PASSWORD a pass");
+            result = testDat.Reader.ReadLine();
+            Assert.Equal("ERR INVALID-ARGUMENT", result);
+            // Attempt a valid set.
+            testDat.Writer.WriteLine("PASSWORD " + password);
+            result = testDat.Reader.ReadLine();
+            Assert.Equal("OK", result);
+            // Attempt to set the password again.
+            testDat.Writer.WriteLine("PASSWORD " + password);
+            result = testDat.Reader.ReadLine();
+            Assert.Equal("ERR ALREADY-SET-PASSWORD", result);
         }
     }
 
@@ -272,24 +321,17 @@ namespace ServerMockupTests
         }
 
         [Fact]
-        public void TestValidDictionaries()
+        public void TestLISTCMD()
         {
             string expectedResponse = "BEGIN LIST CMD SampleUPS\nCMD SampleUPS testcmd\n" +
                 "END LIST CMD SampleUPS\n";
-            string expectedClientResponse = "BEGIN LIST CLIENT SampleUPS\nCLIENT SampleUPS 127.0.0.1\n" +
-                "CLIENT SampleUPS ::1\nEND LIST CLIENT SampleUPS\n";
             using DisposableTestData testData = new DisposableTestData(false);
             ServerUPS sampleUPS = new ServerUPS("SampleUPS");
             sampleUPS.Commands.Add("testcmd", null);
-            sampleUPS.Clients.Add("127.0.0.1");
-            sampleUPS.Clients.Add("::1");
             testData.Server.UPSs.Add(sampleUPS);
             testData.Writer.WriteLine("LIST CMD " + sampleUPS.Name);
             string response = testData.ReadListResponse();
             Assert.Equal(expectedResponse, response);
-            testData.Writer.WriteLine("LIST CLIENT " + sampleUPS.Name);
-            response = testData.ReadListResponse();
-            Assert.Equal(expectedClientResponse, response);
         }
     }
 
