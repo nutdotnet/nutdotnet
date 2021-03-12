@@ -142,6 +142,7 @@ namespace NUTDotNetServer
         void HandleNewClient(TcpClient newClient)
         {
             bool isAuthorized = IsClientAuthorized(newClient);
+            string clientAddress = ((IPEndPoint)newClient.Client.RemoteEndPoint).Address.ToString();
             // Authentication details passed from the client during this session. Will determine is they can execute
             // certain commands.
             string sessionUsername = "";
@@ -222,15 +223,16 @@ namespace NUTDotNetServer
                         sessionPassword = splitLine[1];
                         streamWriter.WriteLine("OK");
                     }
-                    /*else if (splitLine[0].Equals("LOGIN"))
+                    else if (splitLine[0].Equals("LOGIN"))
                     {
-                        if (splitLine.Length > 2)
-                        {
+                        if (splitLine.Length != 2 || string.IsNullOrWhiteSpace(splitLine[1]))
                             streamWriter.WriteLine("ERR INVALID-ARGUMENT");
-                            continue;
-                        }
+                        else if (string.IsNullOrEmpty(sessionUsername) || string.IsNullOrEmpty(sessionPassword))
+                            streamWriter.WriteLine("ERR ACCESS-DENIED");
+                        else
+                            streamWriter.Write(ClientLogin(splitLine[1], clientAddress));
 
-                    }*/
+                    }
                     else if (readLine.Equals("LOGOUT"))
                     {
                         streamWriter.WriteLine("OK Goodbye");
@@ -249,16 +251,21 @@ namespace NUTDotNetServer
             streamWriter.Dispose();
         }
 
-        /*private string ClientLogin(string upsName, string clientAddr)
+        private string ClientLogin(string upsName, string clientAddress)
         {
             try
             {
                 ServerUPS upsObject = GetUPSByName(upsName);
-                if (upsObject.Clients.Contains(clientAddr))
+                if (upsObject.Clients.Contains(clientAddress))
                     throw new Exception("ERR ALREADY-LOGGED-IN");
-
+                upsObject.Clients.Add(clientAddress);
+                return "OK" + NUTCommon.NewLine;
             }
-        }*/
+            catch (Exception ex)
+            {
+                return ex.Message + NUTCommon.NewLine;
+            }
+        }
 
         private string DoSetVar(string upsName, string varName, string value)
         {
