@@ -169,6 +169,39 @@ namespace ServerMockupTests
             result = testDat.Reader.ReadLine();
             Assert.Equal("ERR ALREADY-SET-PASSWORD", result);
         }
+
+        [Fact]
+        public void TestLogins()
+        {
+            using DisposableTestData testData = new DisposableTestData(false);
+            testData.Server.UPSs.Add(new ServerUPS("BadLoginUPS"));
+
+            // Try logging in with no user, pass, or UPS.
+            testData.Writer.WriteLine("LOGIN");
+            Assert.Equal("ERR INVALID-ARGUMENT", testData.Reader.ReadLine());
+
+            // Try with just user set.
+            testData.Writer.WriteLine("USERNAME user");
+            Assert.Equal("OK", testData.Reader.ReadLine());
+            testData.Writer.WriteLine("LOGIN BadLoginUPS");
+            Assert.Equal("ERR ACCESS-DENIED", testData.Reader.ReadLine());
+
+            // Try valid user and pass, but invalid UPS.
+            testData.Writer.WriteLine("PASSWORD pass");
+            Assert.Equal("OK", testData.Reader.ReadLine());
+            testData.Writer.WriteLine("LOGIN foo");
+            Assert.Equal("ERR UNKNOWN-UPS", testData.Reader.ReadLine());
+
+            // Now try a valid login.
+            testData.Writer.WriteLine("LOGIN BadLoginUPS");
+            Assert.Equal("OK", testData.Reader.ReadLine());
+            Assert.Equal(((IPEndPoint)testData.Client.Client.LocalEndPoint).Address.ToString(),
+                testData.Server.UPSs[0].Clients[0]);
+
+            // Try logging in again.
+            testData.Writer.WriteLine("LOGIN BadLoginUPS");
+            Assert.Equal("ERR ALREADY-LOGGED-IN", testData.Reader.ReadLine());
+        }
     }
 
     public class BasicListTests
