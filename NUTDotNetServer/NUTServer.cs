@@ -194,7 +194,7 @@ namespace NUTDotNetServer
                     }
                     else if (splitLine[0].Equals("USERNAME"))
                     {
-                        if (splitLine.Length != 2)
+                        if (splitLine.Length != 2 || string.IsNullOrWhiteSpace(splitLine[1]))
                         {
                             streamWriter.WriteLine("ERR INVALID-ARGUMENT");
                             continue;
@@ -209,7 +209,7 @@ namespace NUTDotNetServer
                     }
                     else if (splitLine[0].Equals("PASSWORD"))
                     {
-                        if (splitLine.Length != 2)
+                        if (splitLine.Length != 2 || string.IsNullOrWhiteSpace(splitLine[1]))
                         {
                             streamWriter.WriteLine("ERR INVALID-ARGUMENT");
                             continue;
