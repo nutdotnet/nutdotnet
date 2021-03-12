@@ -12,7 +12,8 @@ namespace NUTDotNetClient
         #region Properties
         public string Host { get; }
         public int Port { get; }
-        public string Username { get; }
+        public string Username { get; private set; }
+        public string Password { get; private set; }
         public bool IsConnected
         {
             get
@@ -28,7 +29,6 @@ namespace NUTDotNetClient
         #endregion
 
         #region Fields
-        private string Password;
         private TcpClient client;
         private bool disposed;
         private StreamWriter streamWriter;
@@ -40,15 +40,11 @@ namespace NUTDotNetClient
         /// Creates an object allowing for communication with a NUT server.
         /// </summary>
         /// <param name="host">Must be running an instance of a NUT server.</param>
-        /// <param name="username"></param>
-        /// <param name="password"></param>
         /// <param name="port"></param>
-        public NUTClient(string host, int port = 3493, string username = "", string password = "")
+        public NUTClient(string host, int port = 3493)
         {
             Host = host;
             Port = port;
-            Username = username;
-            Password = password;
             upses = new List<ClientUPS>();
         }
 
@@ -94,6 +90,8 @@ namespace NUTDotNetClient
                 throw new InvalidOperationException("Cannot disconnect while client is disconnected.");
 
             SendQuery("LOGOUT");
+            Username = string.Empty;
+            Password = string.Empty;
             streamReader.Close();
             streamWriter.Close();
             client.Close();
@@ -148,13 +146,41 @@ namespace NUTDotNetClient
         }
 
         /// <summary>
+        /// Tries to set the username of this connection on the server. Any errors will be thrown. Local Username
+        /// property will be set on success. Note: You cannot change the username of this connection after it has
+        /// already been set. Reconnect if it needs to be changed.
+        /// </summary>
+        /// <param name="username"></param>
+        public void SetUsername(string username)
+        {
+            if (!string.IsNullOrEmpty(Username))
+                throw new InvalidOperationException("Cannot change username after it's set. Reconnect and try again.");
+            string response = SendQuery("USERNAME " + username)[0];
+            if (response.Equals("OK"))
+                Username = username;
+        }
+
+        /// <summary>
+        /// Tries to set the password of this connection on the server. Similar to SetUsername, any encountered errors
+        /// are thrown, and the local property is set on success. Cannot change this after it's been set.
+        /// </summary>
+        /// <param name="password"></param>
+        public void SetPassword(string password)
+        {
+            if (!string.IsNullOrEmpty(Password))
+                throw new InvalidOperationException("Cannot change password after it's set. Reconnect and try again.");
+            string response = SendQuery("PASSWORD " + password)[0];
+            if (response.Equals("OK"))
+                Password = password;
+        }
+
+        /// <summary>
         /// Tells the NUT server that we're depending on it for power, so it will wait for us to disconnect before
-        /// shutting down.
+        /// shutting down. Any encountered errors will be thrown, otherwise the command runs successfully.
         /// </summary>
         private void Login()
         {
 
-            //Response userAuth = SendQuery()
         }
 
         /// <summary>
