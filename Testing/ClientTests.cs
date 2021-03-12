@@ -61,6 +61,32 @@ namespace Testing
         }
 
         [Fact]
+        public void TestUsernameSets()
+        {
+            string testUser = "testUser";
+            SetupTestData();
+
+            Assert.Throws<NUTException>(() => testFixture.testClient.SetUsername(string.Empty));
+            testFixture.testClient.SetUsername(testUser);
+            Assert.Throws<InvalidOperationException>(() => testFixture.testClient.SetUsername(testUser));
+            Assert.Equal(testUser, testFixture.testClient.Username);
+            ClearTestData();
+        }
+
+        [Fact]
+        public void TestPasswordSets()
+        {
+            string testPass = "testPass";
+            SetupTestData();
+
+            Assert.Throws<NUTException>(() => testFixture.testClient.SetPassword(string.Empty));
+            testFixture.testClient.SetPassword(testPass);
+            Assert.Throws<InvalidOperationException>(() => testFixture.testClient.SetPassword(testPass));
+            Assert.Equal(testPass, testFixture.testClient.Password);
+            ClearTestData();
+        }
+
+        [Fact]
         public void TestGetEmptyUPSes()
         {
             SetupTestData();
