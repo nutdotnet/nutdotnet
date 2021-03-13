@@ -202,6 +202,25 @@ namespace ServerMockupTests
             testData.Writer.WriteLine("LOGIN BadLoginUPS");
             Assert.Equal("ERR ALREADY-LOGGED-IN", testData.Reader.ReadLine());
         }
+
+        [Fact]
+        public void TestLoginAndLogout()
+        {
+            using DisposableTestData testData = new DisposableTestData(false);
+            string localAddress = ((IPEndPoint)testData.Client.Client.LocalEndPoint).Address.ToString();
+            testData.Server.UPSs.Add(new ServerUPS("LoginLogout"));
+
+            testData.Writer.WriteLine("USERNAME user");
+            Assert.Equal("OK", testData.Reader.ReadLine());
+            testData.Writer.WriteLine("PASSWORD pass");
+            Assert.Equal("OK", testData.Reader.ReadLine());
+            testData.Writer.WriteLine("LOGIN LoginLogout");
+            Assert.Equal("OK", testData.Reader.ReadLine());
+            Assert.Equal(localAddress, testData.Server.UPSs[0].Clients[0]);
+            testData.Writer.WriteLine("LOGOUT");
+            Assert.Equal("OK Goodbye", testData.Reader.ReadLine());
+            Assert.Empty(testData.Server.UPSs[0].Clients);
+        }
     }
 
     public class BasicListTests

@@ -235,7 +235,7 @@ namespace NUTDotNetServer
                     }
                     else if (readLine.Equals("LOGOUT"))
                     {
-                        streamWriter.WriteLine("OK Goodbye");
+                        streamWriter.Write(ClientLogout(clientAddress));
                         break;
                     }
                     else
@@ -259,12 +259,26 @@ namespace NUTDotNetServer
                 if (upsObject.Clients.Contains(clientAddress))
                     throw new Exception("ERR ALREADY-LOGGED-IN");
                 upsObject.Clients.Add(clientAddress);
+                Debug.WriteLine("Logged client " + clientAddress + " into UPS " + upsObject);
                 return "OK" + NUTCommon.NewLine;
             }
             catch (Exception ex)
             {
                 return ex.Message + NUTCommon.NewLine;
             }
+        }
+
+        private string ClientLogout(string clientAddress)
+        {
+            // NUT protocol doesn't support a UPS name parameter when logging out, so we need to search for the client
+            // in all UPSes.
+            foreach (ServerUPS ups in UPSs)
+            {
+                if (ups.Clients.Remove(clientAddress))
+                    Debug.WriteLine("Removed client " + clientAddress + " from " + ups);
+            }
+
+            return "OK Goodbye" + NUTCommon.NewLine;
         }
 
         private string DoSetVar(string upsName, string varName, string value)
