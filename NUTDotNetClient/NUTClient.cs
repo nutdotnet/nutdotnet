@@ -33,7 +33,7 @@ namespace NUTDotNetClient
         private bool disposed;
         private StreamWriter streamWriter;
         private StreamReader streamReader;
-        private List<ClientUPS> upses;
+        private readonly List<ClientUPS> upses;
         #endregion
 
         /// <summary>
@@ -172,15 +172,6 @@ namespace NUTDotNetClient
             string response = SendQuery("PASSWORD " + password)[0];
             if (response.Equals("OK"))
                 Password = password;
-        }
-
-        /// <summary>
-        /// Tells the NUT server that we're depending on it for power, so it will wait for us to disconnect before
-        /// shutting down. Any encountered errors will be thrown, otherwise the command runs successfully.
-        /// </summary>
-        private void Login()
-        {
-
         }
 
         /// <summary>

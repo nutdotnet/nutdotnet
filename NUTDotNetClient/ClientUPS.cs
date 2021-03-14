@@ -10,11 +10,28 @@ namespace NUTDotNetClient
     /// </summary>
     public class ClientUPS : AbstractUPS
     {
+        /// <summary>
+        /// Is the client registered as dependant on this UPS? In case of a power-down event, the NUT server will wait
+        /// until this client has logged out before shutting down.
+        /// </summary>
+        public bool IsLoggedIn { get; private set; }
+
         private readonly NUTClient client;
 
         public ClientUPS(NUTClient client, string name, string description) : base(name, description)
         {
             this.client = client;
+            IsLoggedIn = false;
+        }
+
+        /// <summary>
+        /// Tells the NUT server that we're depending on it for power, so it will wait for us to disconnect before
+        /// shutting down. Any encountered errors will be thrown, otherwise the command runs successfully.
+        /// </summary>
+        public void Login()
+        {
+            string response = client.SendQuery("LOGIN " + Name)[0];
+            IsLoggedIn = response.Equals("OK");
         }
 
         /// <summary>
