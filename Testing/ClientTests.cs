@@ -98,14 +98,26 @@ namespace Testing
             ClearTestData();
         }
 
+        private bool VerifyUPSDetails(ServerUPS a, List<ClientUPS> clientList)
+        {
+            bool foundMatch = false;
+            foreach (ClientUPS client in clientList)
+            {
+                foundMatch = client.Name.Equals(a.Name) && client.Description.Equals(a.Description);
+                if (foundMatch)
+                    break;
+            }
+            return foundMatch;
+        }
+
         [Fact]
         public void TestGetUPSes()
         {
             SetupTestData();
 
-            List<AbstractUPS> testData = new List<AbstractUPS> { new AbstractUPS("testups1"), new AbstractUPS("testups2", "test description"),
-                    new AbstractUPS("testups3", "test description")};
-            testFixture.testServer.UPSs = testData.ConvertAll(ups => (ups as ServerUPS));
+            List<ServerUPS> testData = new List<ServerUPS> { new ServerUPS("testups1"), new ServerUPS("testups2", "test description"),
+                    new ServerUPS("testups3", "test description")};
+            testFixture.testServer.UPSs = testData;
             long startTicks = DateTime.Now.Ticks;
             List<ClientUPS> upses = testFixture.testClient.GetUPSes();
             long stopTicks = DateTime.Now.Ticks;
@@ -115,7 +127,21 @@ namespace Testing
             stopTicks = DateTime.Now.Ticks;
             output.WriteLine("Cached LIST UPS access took {0} ticks.", stopTicks - startTicks);
 
-            Assert.True(upses.TrueForAll(client => testData.Contains(client)));
+            Assert.All(testData, serverups => VerifyUPSDetails(serverups, upses));
+
+            ClearTestData();
+        }
+
+        [Fact]
+        public void TestLoggingIn()
+        {
+            SetupTestData();
+
+            testFixture.testServer.UPSs.Add(new ServerUPS("LogInUPS"));
+            testFixture.testClient.SetUsername("user");
+            testFixture.testClient.SetPassword("pass");
+            testFixture.testClient.GetUPSes()[0].Login();
+            Assert.True(testFixture.testClient.GetUPSes()[0].IsLoggedIn);
 
             ClearTestData();
         }
