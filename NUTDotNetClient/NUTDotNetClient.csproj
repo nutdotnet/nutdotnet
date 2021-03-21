@@ -4,7 +4,14 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <AssemblyVersion>0.1.1.21073</AssemblyVersion>
     <FileVersion>0.1.1.21073</FileVersion>
-    <Version>0.1</Version>
+    <Version>0.1.1</Version>
+    <Authors>gbakeman;</Authors>
+    <Company />
+    <Description>A .Net client library for communicating with Network UPS Tools servers.</Description>
+    <RepositoryUrl>https://github.com/gbakeman/nut-dot-net.git</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/gbakeman/nut-dot-net</PackageProjectUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>nut;network ups tools;</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
