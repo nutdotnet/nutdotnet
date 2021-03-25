@@ -22,7 +22,9 @@ Inspired by the [WINNut](https://github.com/gawindx/WinNUT-Client) client, this 
 
 # References
 [Network UPS Tools GitHub project](https://github.com/networkupstools/nut/)
+
 [jNut - A NUT client written in Java](https://github.com/networkupstools/jNut)
+
 [WinNUT Client GitHub project](https://github.com/gawindx/WinNUT-Client)
 
 # Extra Links
