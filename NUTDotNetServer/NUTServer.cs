@@ -1,5 +1,6 @@
 ﻿using NUTDotNetShared;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -14,14 +15,28 @@ namespace NUTDotNetServer
     public class NUTServer : IDisposable
     {
         #region Public Members
+
         //Specify the network protocol version
         public const string NETVER = "1.2";
+
+        /// <summary>
+        /// Number of seconds to wait before disconnecting a client. A value <= 0 disables the timeout function.
+        /// </summary>
+        public int ClientTimeout = 60;
+
+        // UPSs that are configured for this server.
+        public List<ServerUPS> UPSs;
+
+        #endregion
+
+        #region Properties
+
         public IPAddress ListenAddress { get; }
+
         // List of clients allowed to execute commands. Even unauthorized clients are allowed to establish
         // a connection.
         public List<IPAddress> AuthorizedClientAddresses { get; set; }
-        // UPSs that are configured for this server.
-        public List<ServerUPS> UPSs;
+
         // If given autoassign port number (0), this will be invalid until the listener has started.
         public int ListenPort
         {
@@ -49,22 +64,25 @@ namespace NUTDotNetServer
                 return assemblyName.FullName + " " + assemblyName.Version;
             }
         }
+
         #endregion
 
         #region Private Members
+
         private bool disposed = false;
         private TcpListener tcpListener;
-        List<TcpClient> connectedClients;
+        private ConcurrentDictionary<string, ClientMetadata> clients;
         private CancellationToken cancellationToken;
         private CancellationTokenSource cancellationTokenSource;
         private bool singleQueryMode = false;
+
         #endregion
 
         public NUTServer(ushort listenPort = NUTCommon.DEFAULT_PORT, bool singleQuery = false)
         {
             ListenAddress = IPAddress.Any;
             AuthorizedClientAddresses = new List<IPAddress>();
-            connectedClients = new List<TcpClient>();
+            clients = new ConcurrentDictionary<string, ClientMetadata>();
             UPSs = new List<ServerUPS>();
             tcpListener = new TcpListener(IPAddress.Any, listenPort);
             cancellationTokenSource = new CancellationTokenSource();
@@ -76,6 +94,35 @@ namespace NUTDotNetServer
                 Thread.CurrentThread.ManagedThreadId, ListenPort);
 
             Task.Run(() => BeginListening(), cancellationToken);
+        }
+
+        #region Public Methods
+
+        /// <summary>
+        /// Disconnects a client from the server.
+        /// </summary>
+        /// <param name="ipPort">The IP and Port string of the client's endpoint.</param>
+        /// <returns>True if client was found and disconnected, false if the client was not found.</returns>
+        public bool DisconnectClient(string ipPort)
+        {
+            if (clients.TryGetValue(ipPort, out ClientMetadata client))
+            {
+                client.Dispose();
+                return true;
+            }
+
+            return false;
+        }
+
+        public ServerUPS GetUPSByName(string name)
+        {
+            for (int i = 0; i < UPSs.Count; i++)
+            {
+                if (UPSs[i].Name.Equals(name))
+                    return UPSs[i];
+            }
+
+            throw new Exception("ERR UNKNOWN-UPS");
         }
 
         public void Dispose()
@@ -100,6 +147,10 @@ namespace NUTDotNetServer
             disposed = true;
         }
 
+        #endregion
+
+        #region Private Memebers
+
         /// <summary>
         /// Start the listener and begin looping to accept clients.
         /// </summary>
@@ -109,16 +160,31 @@ namespace NUTDotNetServer
             {
                 // Wait for a connection.
                 TcpClient newClient = await tcpListener.AcceptTcpClientAsync();
+                ClientMetadata newClientMetadata = new ClientMetadata(newClient);
+                Timer clientTimeout;
                 Debug.WriteLine("New client connecting from " + newClient.Client.RemoteEndPoint);
-                connectedClients.Add(newClient);
+                clients.TryAdd(newClientMetadata.IpPort, newClientMetadata);
+                if (ClientTimeout > 0)
+                    clientTimeout = new Timer(TimeoutClient, newClient, ClientTimeout * 1000, Timeout.Infinite);
+                
                 HandleNewClient(newClient);
 
                 newClient.Close();
-                connectedClients.Remove(newClient);
+                clients.TryRemove(newClientMetadata.IpPort, out ClientMetadata clientMetadata);
             }
 
             Debug.WriteLine("Cancellation requested, shutting down server.");
             tcpListener.Stop();
+        }
+
+        /// <summary>
+        /// Handle the Elapsed event from a timer when a client should timeout.
+        /// </summary>
+        /// <param name="source"></param>
+        /// <param name="e"></param>
+        private static void TimeoutClient(Object client)
+        {
+
         }
 
         /// <summary>
@@ -381,15 +447,6 @@ namespace NUTDotNetServer
             return response.ToString();
         }
 
-        public ServerUPS GetUPSByName(string name)
-        {
-            for (int i = 0; i < UPSs.Count; i++)
-            {
-                if (UPSs[i].Name.Equals(name))
-                    return UPSs[i];
-            }
-
-            throw new Exception("ERR UNKNOWN-UPS");
-        }
+        #endregion
     }
 }
