@@ -1,13 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Net;
 using System.Net.Sockets;
-using System.Text;
 
 namespace NUTDotNetServer
 {
     /// <summary>
     /// Data that collectively represents a single client connection to the server. Copied from the WatsonTcp project:
-    /// https://github.com/273168121/WatsonTcp/blob/master/WatsonTcp/ClientMetadata.cs
+    /// https://github.com/jchristn/WatsonTcp/blob/master/WatsonTcp/ClientMetadata.cs
     /// </summary>
     class ClientMetadata : IDisposable
     {
@@ -18,7 +17,6 @@ namespace NUTDotNetServer
         private TcpClient tcpClient;
         private NetworkStream networkStream;
         //private SslStream sslStream;
-        private string ipPort;
 
         #endregion
 
@@ -40,10 +38,7 @@ namespace NUTDotNetServer
         //    set { sslStream = value; }
         //}
 
-        public string IpPort
-        {
-            get { return ipPort; }
-        }
+        public IPAddress Ip { get; }
 
         #endregion
 
@@ -51,7 +46,7 @@ namespace NUTDotNetServer
         {
             tcpClient = client ?? throw new ArgumentNullException(nameof(client) + " is null.");
             networkStream = tcpClient.GetStream();
-            ipPort = tcpClient.Client.RemoteEndPoint.ToString();
+            Ip = ((IPEndPoint)client.Client.RemoteEndPoint).Address;
         }
 
         #region Private-Methods

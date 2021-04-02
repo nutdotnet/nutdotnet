@@ -38,24 +38,9 @@ namespace NUTDotNetServer
         public List<IPAddress> AuthorizedClientAddresses { get; set; }
 
         // If given autoassign port number (0), this will be invalid until the listener has started.
-        public int ListenPort
-        {
-            get
-            {
-                return ((IPEndPoint)tcpListener.LocalEndpoint).Port;
-            }
-        }
+        public int ListenPort { get; private set; }
         public string Username { get; }
-        public bool IsListening
-        {
-            get
-            {
-                if (tcpListener is null)
-                    return false;
-                else
-                    return tcpListener.Server.IsBound;
-            }
-        }
+        public bool IsListening { get; private set; }
         public string ServerVersion
         {
             get
@@ -71,47 +56,66 @@ namespace NUTDotNetServer
 
         private bool disposed = false;
         private TcpListener tcpListener;
-        private ConcurrentDictionary<string, ClientMetadata> clients;
+        private bool singleQueryMode = false;
+
+        private ConcurrentDictionary<IPAddress, ClientMetadata> clients;
+        private ConcurrentDictionary<IPAddress, DateTime> clientsLastSeen;
+
         private CancellationToken cancellationToken;
         private CancellationTokenSource cancellationTokenSource;
-        private bool singleQueryMode = false;
+        private Task acceptConnections;
+        private Task monitorClients;
 
         #endregion
 
         public NUTServer(ushort listenPort = NUTCommon.DEFAULT_PORT, bool singleQuery = false)
         {
             ListenAddress = IPAddress.Any;
+            ListenPort = listenPort;
             AuthorizedClientAddresses = new List<IPAddress>();
-            clients = new ConcurrentDictionary<string, ClientMetadata>();
+            clients = new ConcurrentDictionary<IPAddress, ClientMetadata>();
             UPSs = new List<ServerUPS>();
-            tcpListener = new TcpListener(IPAddress.Any, listenPort);
-            cancellationTokenSource = new CancellationTokenSource();
-            cancellationToken = cancellationTokenSource.Token;
             singleQueryMode = singleQuery;
-
-            tcpListener.Start();
-            Debug.WriteLine("NUT server has started. PID: {0}, Port: {1}",
-                Thread.CurrentThread.ManagedThreadId, ListenPort);
-
-            Task.Run(() => BeginListening(), cancellationToken);
         }
 
         #region Public Methods
+
+        public void Start()
+        {
+            if (IsListening) throw new InvalidOperationException("Server is already started and listening.");
+
+            if (clientsLastSeen is null) clientsLastSeen = new ConcurrentDictionary<IPAddress, DateTime>();
+            cancellationTokenSource = new CancellationTokenSource();
+            cancellationToken = cancellationTokenSource.Token;
+            tcpListener = new TcpListener(IPAddress.Any, ListenPort);
+            Debug.WriteLine("Server starting on " + tcpListener.LocalEndpoint.ToString());
+
+            acceptConnections = Task.Run(() => AcceptConnections(), cancellationToken);
+            monitorClients = Task.Run(() => MonitorForIdleClients(), cancellationToken);
+        }
+
+        public void Stop()
+        {
+            if (!IsListening) throw new InvalidOperationException("Server is already stopped!");
+
+            IsListening = false;
+            tcpListener.Stop();
+            cancellationTokenSource.Cancel();
+            Debug.WriteLine("Server has stopped.");
+        }
 
         /// <summary>
         /// Disconnects a client from the server.
         /// </summary>
         /// <param name="ipPort">The IP and Port string of the client's endpoint.</param>
         /// <returns>True if client was found and disconnected, false if the client was not found.</returns>
-        public bool DisconnectClient(string ipPort)
+        public void DisconnectClient(IPAddress ip)
         {
-            if (clients.TryGetValue(ipPort, out ClientMetadata client))
+            if (clients.TryGetValue(ip, out ClientMetadata client))
             {
                 client.Dispose();
-                return true;
+                clients.TryRemove(ip, out _);
             }
-
-            return false;
         }
 
         public ServerUPS GetUPSByName(string name)
@@ -142,6 +146,7 @@ namespace NUTDotNetServer
                 cancellationTokenSource.Dispose();
                 tcpListener.Server.Close();
                 tcpListener.Stop();
+                acceptConnections = null;
             }
 
             disposed = true;
@@ -154,37 +159,81 @@ namespace NUTDotNetServer
         /// <summary>
         /// Start the listener and begin looping to accept clients.
         /// </summary>
-        private async Task BeginListening()
+        private async Task AcceptConnections()
         {
-            while (!cancellationToken.IsCancellationRequested)
-            {
-                // Wait for a connection.
-                TcpClient newClient = await tcpListener.AcceptTcpClientAsync();
-                ClientMetadata newClientMetadata = new ClientMetadata(newClient);
-                Timer clientTimeout;
-                Debug.WriteLine("New client connecting from " + newClient.Client.RemoteEndPoint);
-                clients.TryAdd(newClientMetadata.IpPort, newClientMetadata);
-                if (ClientTimeout > 0)
-                    clientTimeout = new Timer(TimeoutClient, newClient, ClientTimeout * 1000, Timeout.Infinite);
-                
-                HandleNewClient(newClient);
+            tcpListener.Start();
+            if (ListenPort == 0)
+                ListenPort = ((IPEndPoint)tcpListener.Server.LocalEndPoint).Port;
+            IsListening = true;
 
-                newClient.Close();
-                clients.TryRemove(newClientMetadata.IpPort, out ClientMetadata clientMetadata);
+            while (true)
+            {
+                try
+                {
+                    // Wait for a connection.
+                    TcpClient newClient = await tcpListener.AcceptTcpClientAsync().ConfigureAwait(false);
+                    newClient.LingerState.Enabled = false;
+                    Debug.WriteLine("New client connecting from " + newClient.Client.RemoteEndPoint);
+                    ClientMetadata newClientMetadata = new ClientMetadata(newClient);
+                    clients.TryAdd(newClientMetadata.Ip, newClientMetadata);
+                    clientsLastSeen.TryAdd(newClientMetadata.Ip, DateTime.Now);
+                    /*if (ClientTimeout > 0)
+                        clientTimeout = new Timer(TimeoutClient, newClient, ClientTimeout * 1000, Timeout.Infinite);*/
+                    Debug.WriteLine("Starting data receiving for client " + newClientMetadata.Ip);
+                    Task dataReceiverTask = Task.Run(() => DataReceiver(newClientMetadata), cancellationToken);
+
+                    /*newClient.Close();
+                    clients.TryRemove(newClientMetadata.IpPort, out ClientMetadata clientMetadata);*/
+                }
+                catch (TaskCanceledException)
+                {
+                    break;
+                }
+                catch (ObjectDisposedException)
+                {
+                    break;
+                }
             }
 
-            Debug.WriteLine("Cancellation requested, shutting down server.");
-            tcpListener.Stop();
+            Debug.WriteLine("Cancellating AcceptConnections task.");
         }
 
         /// <summary>
-        /// Handle the Elapsed event from a timer when a client should timeout.
+        /// Check the clients list and time them out if necessary.
         /// </summary>
         /// <param name="source"></param>
         /// <param name="e"></param>
-        private static void TimeoutClient(Object client)
+        private async Task MonitorForIdleClients()
         {
+            try
+            {
+                while (true)
+                {
+                    await Task.Delay(1000, cancellationToken).ConfigureAwait(false);
 
+                    if (ClientTimeout > 0 && clientsLastSeen.Count > 0)
+                    {
+                        DateTime idleTimestamp = DateTime.Now.AddSeconds(-1 * ClientTimeout);
+
+                        foreach (KeyValuePair<IPAddress, DateTime> curr in clientsLastSeen)
+                        {
+                            if (curr.Value < idleTimestamp)
+                            {
+                                Debug.WriteLine(curr.Key + " is being kicked due to timeout.");
+                                DisconnectClient(curr.Key);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (TaskCanceledException)
+            {
+
+            }
+            catch (OperationCanceledException)
+            {
+
+            }
         }
 
         /// <summary>
@@ -195,28 +244,26 @@ namespace NUTDotNetServer
         /// </summary>
         /// <param name="client"></param>
         /// <returns></returns>
-        private bool IsClientAuthorized(TcpClient client)
+        private bool IsClientAuthorized(ClientMetadata client)
         {
             // Authorization system is disabled when no clients are on the list.
             if (AuthorizedClientAddresses.Count == 0)
                 return true;
 
-            IPEndPoint clientEndpoint = (IPEndPoint)client.Client.RemoteEndPoint;
+            IPEndPoint clientEndpoint = (IPEndPoint)client.TcpClient.Client.RemoteEndPoint;
             return AuthorizedClientAddresses.Contains(clientEndpoint.Address);
         }
 
-        void HandleNewClient(TcpClient newClient)
+        async Task DataReceiver(ClientMetadata client)
         {
-            bool isAuthorized = IsClientAuthorized(newClient);
-            string clientAddress = ((IPEndPoint)newClient.Client.RemoteEndPoint).Address.ToString();
+            bool isAuthorized = IsClientAuthorized(client);
             // Authentication details passed from the client during this session. Will determine is they can execute
             // certain commands.
             string sessionUsername = "";
             string sessionPassword = "";
 
-            NetworkStream clientNetStream = newClient.GetStream();
-            StreamReader streamReader = new StreamReader(clientNetStream, NUTCommon.PROTO_ENCODING);
-            StreamWriter streamWriter = new StreamWriter(clientNetStream, NUTCommon.PROTO_ENCODING)
+            StreamReader streamReader = new StreamReader(client.NetworkStream, NUTCommon.PROTO_ENCODING);
+            StreamWriter streamWriter = new StreamWriter(client.NetworkStream, NUTCommon.PROTO_ENCODING)
             {
                 AutoFlush = true,
                 NewLine = NUTCommon.NewLine
@@ -224,11 +271,11 @@ namespace NUTDotNetServer
 
             // Enter into a loop of listening a responding to queries.
             string readLine;
-            while (newClient.Connected)
+            while (client.TcpClient.Connected)
             {
-                if (!clientNetStream.DataAvailable)
+                if (!client.NetworkStream.DataAvailable)
                 {
-                    Thread.Sleep(50);
+                    await Task.Delay(50).ConfigureAwait(false);
                     continue;
                 }
 
@@ -237,7 +284,7 @@ namespace NUTDotNetServer
                 readLine = readLine.Replace("\"", string.Empty);
                 // Split the query around whitespace characters.
                 string[] splitLine = readLine.Split();
-                Debug.WriteLine(newClient.Client.RemoteEndPoint.ToString() + " says " + readLine);
+                Debug.WriteLine(client.Ip + " says " + readLine);
                 // If the client is not authorized, then any command besides LOGOUT will result in an A.D error.
                 if (!readLine.Equals("LOGOUT") & !isAuthorized)
                 {
@@ -296,12 +343,12 @@ namespace NUTDotNetServer
                         else if (string.IsNullOrEmpty(sessionUsername) || string.IsNullOrEmpty(sessionPassword))
                             streamWriter.WriteLine("ERR ACCESS-DENIED");
                         else
-                            streamWriter.Write(ClientLogin(splitLine[1], clientAddress));
+                            streamWriter.Write(ClientLogin(splitLine[1], client.Ip.ToString()));
 
                     }
                     else if (readLine.Equals("LOGOUT"))
                     {
-                        streamWriter.Write(ClientLogout(clientAddress));
+                        streamWriter.Write(ClientLogout(client.Ip.ToString()));
                         break;
                     }
                     else
@@ -312,9 +359,13 @@ namespace NUTDotNetServer
                 if (singleQueryMode)
                     break;
             }
-            Debug.WriteLine("Client " + newClient.Client.RemoteEndPoint.ToString() + " has disconnected.");
+
+            Debug.WriteLine("Client " + client.Ip + " has disconnected.");
             streamReader.Dispose();
             streamWriter.Dispose();
+            clients.TryRemove(client.Ip, out _);
+            clientsLastSeen.TryRemove(client.Ip, out _);
+            client.Dispose();
         }
 
         private string ClientLogin(string upsName, string clientAddress)

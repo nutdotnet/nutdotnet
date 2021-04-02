@@ -15,12 +15,19 @@ namespace Testing
         public TestFixture()
         {
             testServer = new NUTServer(0);
+            testServer.Start();
+            // Just like in the server tests - we need to wait for the TcpListener to find a port before we can use it.
+            while (!testServer.IsListening)
+            {
+                System.Threading.Thread.Sleep(20);
+            }
             testClient = new NUTClient("localhost", testServer.ListenPort);
         }
 
         public void Dispose()
         {
             testClient.Dispose();
+            testServer.Stop();
             testServer.Dispose();
         }
     }

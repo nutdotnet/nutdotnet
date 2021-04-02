@@ -23,6 +23,12 @@ namespace ServerMockupTests
         public DisposableTestData(bool singleQuery)
         {
             Server = new NUTServer(0, singleQuery);
+            Server.Start();
+            // Wait for the TcpListener to find a port before we try connecting to it.
+            while (!Server.IsListening)
+            {
+                System.Threading.Thread.Sleep(20);
+            }
             Debug.WriteLine("Server started in test.");
             Client = new TcpClient("localhost", Server.ListenPort);
             Reader = new StreamReader(Client.GetStream());
@@ -50,6 +56,7 @@ namespace ServerMockupTests
                 Reader.Dispose();
                 Writer.Dispose();
                 Client.Close();
+                Server.Stop();
                 Server.Dispose();
             }
 
