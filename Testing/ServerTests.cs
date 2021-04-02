@@ -228,6 +228,16 @@ namespace ServerMockupTests
             Assert.Equal("OK Goodbye", testData.Reader.ReadLine());
             Assert.Empty(testData.Server.UPSs[0].Clients);
         }
+
+        [Fact]
+        public void TestTimeout()
+        {
+            using DisposableTestData testData = new DisposableTestData(false);
+            testData.Server.ClientTimeout = 2; //Set to two seconds so we don't need to wait for long.
+            Assert.True(testData.Client.Connected);
+            System.Threading.Timer waitTimeout = new System.Threading.Timer((object stateInfo) =>
+                Assert.False(((TcpClient)stateInfo).Connected), testData.Client, 3000, -1);
+        }
     }
 
     public class BasicListTests

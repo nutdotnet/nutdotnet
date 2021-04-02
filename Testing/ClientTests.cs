@@ -199,5 +199,15 @@ namespace Testing
             ClearTestData();
             Assert.Equal(testUPS.Rewritables["testRW"], clientUPS.GetRewritables()["testRW"]);
         }
+
+        [Fact]
+        public void TestClientTimeout()
+        {
+            SetupTestData();
+            testFixture.testServer.ClientTimeout = 2;
+            Assert.True(testFixture.testClient.IsConnected);
+            System.Threading.Timer waitTimeout = new System.Threading.Timer((object stateInfo) =>
+                Assert.False(((NUTClient)stateInfo).IsConnected), testFixture.testClient, 3000, -1);
+        }
     }
 }
