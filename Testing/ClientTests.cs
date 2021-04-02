@@ -3,6 +3,7 @@ using NUTDotNetServer;
 using NUTDotNetShared;
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -206,8 +207,24 @@ namespace Testing
             SetupTestData();
             testFixture.testServer.ClientTimeout = 2;
             Assert.True(testFixture.testClient.IsConnected);
-            System.Threading.Timer waitTimeout = new System.Threading.Timer((object stateInfo) =>
+            Timer waitTimeout = new Timer((object stateInfo) =>
                 Assert.False(((NUTClient)stateInfo).IsConnected), testFixture.testClient, 3000, -1);
+            ClearTestData();
+        }
+
+        [Fact]
+        public void TestExtendedTimeout()
+        {
+            SetupTestData();
+            testFixture.testServer.ClientTimeout = 2;
+            Assert.True(testFixture.testClient.IsConnected);
+            Thread.Sleep(1500);
+            Assert.NotEmpty(testFixture.testClient.SendQuery("VER"));
+            Thread.Sleep(1500);
+            Assert.NotEmpty(testFixture.testClient.SendQuery("VER"));
+            Thread.Sleep(1000);
+            Assert.True(testFixture.testClient.IsConnected);
+            ClearTestData();
         }
     }
 }

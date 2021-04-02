@@ -7,6 +7,7 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 using Xunit;
 
 namespace ServerMockupTests
@@ -237,6 +238,25 @@ namespace ServerMockupTests
             Assert.True(testData.Client.Connected);
             System.Threading.Timer waitTimeout = new System.Threading.Timer((object stateInfo) =>
                 Assert.False(((TcpClient)stateInfo).Connected), testData.Client, 3000, -1);
+        }
+
+        /// <summary>
+        /// Ensure that the client isn't kicked while still executing commands.
+        /// </summary>
+        [Fact]
+        public void TestExtendedTimeout()
+        {
+            using DisposableTestData testData = new DisposableTestData(false);
+            testData.Server.ClientTimeout = 2;
+            Assert.True(testData.Client.Connected);
+            Thread.Sleep(1500);
+            testData.Writer.WriteLine("VER");
+            Assert.False(string.IsNullOrEmpty(testData.Reader.ReadLine()));
+            Thread.Sleep(1500);
+            testData.Writer.WriteLine("VER");
+            Assert.False(string.IsNullOrEmpty(testData.Reader.ReadLine()));
+            Thread.Sleep(1000);
+            Assert.True(testData.Client.Connected);
         }
     }
 

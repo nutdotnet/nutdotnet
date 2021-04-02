@@ -280,6 +280,7 @@ namespace NUTDotNetServer
                 }
 
                 readLine = streamReader.ReadLine();
+                clientsLastSeen.AddOrUpdate(client.Ip, DateTime.Now, (key, value) => DateTime.Now);
                 // Remove quotes
                 readLine = readLine.Replace("\"", string.Empty);
                 // Split the query around whitespace characters.
