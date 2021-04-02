@@ -58,5 +58,10 @@ namespace NUTDotNetShared
                 return hash;
             }
         }
+
+        public override string ToString()
+        {
+            return Name + " \"" + Description + "\"" + NUTCommon.NewLine;
+        }
     }
 }

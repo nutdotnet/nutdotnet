@@ -297,7 +297,7 @@ namespace NUTDotNetServer
                         streamWriter.WriteLine(ServerVersion);
                     else if (splitLine[0].Equals("NETVER"))
                         streamWriter.WriteLine(NETVER);
-                    else if (splitLine[0].Equals("GET") && splitLine.Length > 1)
+                    else if (splitLine[0].Equals("GET"))
                         streamWriter.Write(ParseGetQuery(splitLine));
                     else if (splitLine[0].Equals("LIST") && splitLine.Length > 1)
                         streamWriter.Write(ParseListQuery(splitLine));

@@ -260,6 +260,42 @@ namespace ServerMockupTests
         }
     }
 
+    public class GetQueryTests
+    {
+        DisposableTestData testData;
+        ServerUPS testUPS1 = new ServerUPS("TestUPS1", "Test description");
+
+        public GetQueryTests()
+        {
+            testData = new DisposableTestData(false);
+            testData.Server.UPSs.Add(testUPS1);
+        }
+
+        [Fact]
+        public void TestBadGetQueries()
+        {
+            testData.Writer.WriteLine("GET");
+            Assert.Equal("ERR INVALID-ARGUMENT", testData.Reader.ReadLine());
+
+            testData.Writer.WriteLine("GET FOO");
+            Assert.Equal("ERR INVALID-ARGUMENT", testData.Reader.ReadLine());
+        }
+
+        [Fact]
+        public void TestNumloginsQuery()
+        {
+            testData.Writer.WriteLine("USERNAME user");
+            Assert.Equal("OK", testData.Reader.ReadLine());
+            testData.Writer.WriteLine("PASSWORD pass");
+            Assert.Equal("OK", testData.Reader.ReadLine());
+            testData.Writer.WriteLine("LOGIN " + testUPS1.Name);
+            Assert.Equal("OK", testData.Reader.ReadLine());
+            Assert.Single(testData.Server.UPSs[0].Clients);
+            testData.Writer.WriteLine("GET NUMLOGINS " + testUPS1.Name);
+            Assert.Equal("NUMLOGINS " + testUPS1.Name + " 1", testData.Reader.ReadLine());
+        }
+    }
+
     public class BasicListTests
     {
         [Fact]
