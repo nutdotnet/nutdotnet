@@ -287,26 +287,24 @@ namespace NUTDotNetServer
                 string[] splitLine = readLine.Split();
                 Debug.WriteLine(client.Ip + " says " + readLine);
                 // If the client is not authorized, then any command besides LOGOUT will result in an A.D error.
-                if (!readLine.Equals("LOGOUT") & !isAuthorized)
+                if (!splitLine[0].Equals("LOGOUT") & !isAuthorized)
                 {
                     streamWriter.WriteLine("ERR ACCESS-DENIED");
                 }
                 else
                 {
-                    if (splitLine[0].Equals("LIST") && splitLine.Length > 1)
+                    if (splitLine[0].Equals("VER"))
+                        streamWriter.WriteLine(ServerVersion);
+                    else if (splitLine[0].Equals("NETVER"))
+                        streamWriter.WriteLine(NETVER);
+                    else if (splitLine[0].Equals("GET") && splitLine.Length > 1)
+                        streamWriter.Write(ParseGetQuery(splitLine));
+                    else if (splitLine[0].Equals("LIST") && splitLine.Length > 1)
                         streamWriter.Write(ParseListQuery(splitLine));
                     else if (splitLine[0].Equals("INSTCMD") && splitLine.Length == 3)
                         streamWriter.Write(DoInstCmd(splitLine[1], splitLine[2]));
                     else if (splitLine[0].Equals("SET") && splitLine.Length == 5)
                         streamWriter.Write(DoSetVar(splitLine[2], splitLine[3], splitLine[4]));
-                    else if (readLine.Equals("VER"))
-                    {
-                        streamWriter.WriteLine(ServerVersion);
-                    }
-                    else if (readLine.Equals("NETVER"))
-                    {
-                        streamWriter.WriteLine(NETVER);
-                    }
                     else if (splitLine[0].Equals("USERNAME"))
                     {
                         if (splitLine.Length != 2 || string.IsNullOrWhiteSpace(splitLine[1]))
@@ -424,6 +422,55 @@ namespace NUTDotNetServer
                     throw new Exception("ERR CMD-NOT-SUPPORTED");
                 upsObject.Commands[cmdName].Invoke();
                 return "OK" + NUTCommon.NewLine;
+            }
+            catch (Exception ex)
+            {
+                return ex.Message + NUTCommon.NewLine;
+            }
+        }
+
+        /// <summary>
+        /// Parses and processes one of the GET queries.
+        /// </summary>
+        /// <param name="splitQuery"></param>
+        /// <returns></returns>
+        string ParseGetQuery(string[] splitQuery)
+        {
+            StringBuilder response = new StringBuilder();
+            try
+            {
+                string subquery = splitQuery.Length >= 2 ? splitQuery[1] : string.Empty;
+                ServerUPS ups = splitQuery.Length >= 3 ? GetUPSByName(splitQuery[2]) : null;
+                string itemName = splitQuery.Length >= 4 ? splitQuery[3] : string.Empty;
+
+                if (subquery.Equals("NUMLOGINS"))
+                {
+                    response.AppendFormat("NUMLOGINS {0} {1}{2}", ups.Name, ups.Clients.Count, NUTCommon.NewLine);
+                }
+                else if (subquery.Equals("UPSDESC"))
+                {
+
+                }
+                else if (subquery.Equals("VAR"))
+                {
+
+                }
+                else if (subquery.Equals("TYPE"))
+                {
+
+                }
+                else if (subquery.Equals("DESC"))
+                {
+
+                }
+                else if (subquery.Equals("CMDDESC"))
+                {
+
+                }
+                else
+                    throw new Exception("ERR INVALID-ARGUMENT");
+
+                return response.ToString();
             }
             catch (Exception ex)
             {
