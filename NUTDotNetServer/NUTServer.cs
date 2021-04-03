@@ -449,7 +449,7 @@ namespace NUTDotNetServer
                 }
                 else if (subquery.Equals("UPSDESC"))
                 {
-
+                    response.AppendFormat("UPSDESC {0} \"{1}\"{2}", ups.Name, ups.Description, NUTCommon.NewLine);
                 }
                 else if (subquery.Equals("VAR"))
                 {

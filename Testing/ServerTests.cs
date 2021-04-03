@@ -294,6 +294,14 @@ namespace ServerMockupTests
             testData.Writer.WriteLine("GET NUMLOGINS " + testUPS1.Name);
             Assert.Equal("NUMLOGINS " + testUPS1.Name + " 1", testData.Reader.ReadLine());
         }
+
+        [Fact]
+        public void TestUpsDescQuery()
+        {
+            testData.Writer.WriteLine("GET UPSDESC " + testUPS1.Name);
+            string subResponse = testData.Reader.ReadLine().Split('"')[1];
+            Assert.Equal(testUPS1.Description, subResponse);
+        }
     }
 
     public class BasicListTests
