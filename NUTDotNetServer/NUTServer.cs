@@ -440,20 +440,24 @@ namespace NUTDotNetServer
             try
             {
                 string subquery = splitQuery.Length >= 2 ? splitQuery[1] : string.Empty;
-                ServerUPS ups = splitQuery.Length >= 3 ? GetUPSByName(splitQuery[2]) : null;
+                ServerUPS ups;
                 string itemName = splitQuery.Length >= 4 ? splitQuery[3] : string.Empty;
 
                 if (subquery.Equals("NUMLOGINS"))
                 {
+                    ups = GetUPSByName(splitQuery[2]);
                     response.AppendFormat("NUMLOGINS {0} {1}{2}", ups.Name, ups.Clients.Count, NUTCommon.NewLine);
                 }
                 else if (subquery.Equals("UPSDESC"))
                 {
+                    ups = GetUPSByName(splitQuery[2]);
                     response.AppendFormat("UPSDESC {0} \"{1}\"{2}", ups.Name, ups.Description, NUTCommon.NewLine);
                 }
-                else if (subquery.Equals("VAR"))
+                else if (subquery.Equals("VAR") && splitQuery.Length == 4)
                 {
-
+                    ups = GetUPSByName(splitQuery[2]);
+                    string variable = ups.Variables[itemName];
+                    response.AppendFormat("VAR {0} {1} \"{2}\"{3}", ups.Name, itemName, variable, NUTCommon.NewLine);
                 }
                 else if (subquery.Equals("TYPE"))
                 {
@@ -471,6 +475,14 @@ namespace NUTDotNetServer
                     throw new Exception("ERR INVALID-ARGUMENT");
 
                 return response.ToString();
+            }
+            catch (IndexOutOfRangeException)
+            {
+                return "ERR INVALID-ARGUMENT" + NUTCommon.NewLine;
+            }
+            catch (KeyNotFoundException)
+            {
+                return "ERR VAR-NOT-SUPPORTED" + NUTCommon.NewLine;
             }
             catch (Exception ex)
             {
