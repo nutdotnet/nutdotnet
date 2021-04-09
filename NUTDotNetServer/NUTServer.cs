@@ -4,6 +4,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -401,10 +402,10 @@ namespace NUTDotNetServer
         {
             try
             {
-                ServerUPS upsObject = GetUPSByName(upsName);
-                if (!upsObject.Rewritables.ContainsKey(varName))
+                UPSVariable upsVar = GetUPSByName(upsName).GetVariableByName(varName);
+                if (upsVar is null)
                     throw new Exception("ERR VAR-NOT-SUPPORTED");
-                upsObject.Rewritables[varName] = value;
+                upsVar.Value = value;
                 return "OK" + NUTCommon.NewLine;
             }
             catch (Exception ex)
@@ -413,15 +414,22 @@ namespace NUTDotNetServer
             }
         }
 
+        /// <summary>
+        /// Simulates an Instant Command that a NUT server would run on a UPS. Since this is just a test server,
+        /// the method only searches for the specified command and doesn't actually run anything.
+        /// </summary>
+        /// <param name="upsName"></param>
+        /// <param name="cmdName"></param>
+        /// <returns></returns>
         private string DoInstCmd(string upsName, string cmdName)
         {
             try
             {
                 ServerUPS upsObject = GetUPSByName(upsName);
-                if (!upsObject.Commands.ContainsKey(cmdName))
-                    throw new Exception("ERR CMD-NOT-SUPPORTED");
-                upsObject.Commands[cmdName].Invoke();
-                return "OK" + NUTCommon.NewLine;
+                if (!upsObject.InstantCommands.Contains(cmdName))
+                    return "ERR CMD-NOT-SUPPORTED" + NUTCommon.NewLine;
+                else
+                    return "OK" + NUTCommon.NewLine;
             }
             catch (Exception ex)
             {
@@ -456,8 +464,8 @@ namespace NUTDotNetServer
                 else if (subquery.Equals("VAR") && splitQuery.Length == 4)
                 {
                     ups = GetUPSByName(splitQuery[2]);
-                    string variable = ups.Variables[itemName];
-                    response.AppendFormat("VAR {0} {1} \"{2}\"{3}", ups.Name, itemName, variable, NUTCommon.NewLine);
+                    UPSVariable upsVar = ups.GetVariableByName(itemName);
+                    response.AppendFormat("VAR {0} {1} \"{2}\"{3}", ups.Name, itemName, upsVar.Value, NUTCommon.NewLine);
                 }
                 else if (subquery.Equals("TYPE"))
                 {
@@ -516,16 +524,16 @@ namespace NUTDotNetServer
                     upsObject = GetUPSByName(upsName);
                     response.AppendFormat("BEGIN LIST {0} {1}{2}", subquery, upsName, NUTCommon.NewLine);
                     if (subquery.Equals("VAR"))
-                        foreach (KeyValuePair<string, string> kvp in upsObject.Variables)
-                            response.AppendFormat("{0} {1} {2} \"{3}\"{4}", subquery, upsObject.Name, kvp.Key,
-                                kvp.Value, NUTCommon.NewLine);
+                        foreach (UPSVariable var in upsObject.GetListOfVariables(AbstractUPS.VarList.Variables))
+                            response.AppendFormat("{0} {1} {2} \"{3}\"{4}", subquery, upsObject.Name, var.Name,
+                                var.Value, NUTCommon.NewLine);
                     else if (subquery.Equals("RW"))
-                        foreach (KeyValuePair<string, string> kvp in upsObject.Rewritables)
-                            response.AppendFormat("{0} {1} {2} \"{3}\"{4}", subquery, upsObject.Name, kvp.Key,
-                                kvp.Value, NUTCommon.NewLine);
+                        foreach (UPSVariable var in upsObject.GetListOfVariables(AbstractUPS.VarList.Rewritables))
+                            response.AppendFormat("{0} {1} {2} \"{3}\"{4}", subquery, upsObject.Name, var.Name,
+                                var.Value, NUTCommon.NewLine);
                     else if (subquery.Equals("CMD"))
-                        foreach (KeyValuePair<string, Action> kvp in upsObject.Commands)
-                            response.AppendFormat("{0} {1} {2}{3}", subquery, upsObject.Name, kvp.Key,
+                        foreach (string var in upsObject.InstantCommands)
+                            response.AppendFormat("{0} {1} {2}{3}", subquery, upsObject.Name, var,
                                 NUTCommon.NewLine);
                     else if (subquery.Equals("CLIENT"))
                         upsObject.Clients.ForEach(str => response.AppendFormat("{0} {1} {2}{3}", subquery,

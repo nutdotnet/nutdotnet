@@ -8,7 +8,7 @@ namespace NUTDotNetShared
     /// exclusive (not String implies Number).
     /// </summary>
     [Flags]
-    public enum Flags
+    public enum VarFlags
     {
         None = 0,
         RW = 1,
@@ -26,10 +26,10 @@ namespace NUTDotNetShared
     public class UPSVariable
     {
         private string varValue;
-        private Flags flags;
+        private VarFlags flags;
 
         public static readonly int MAX_VALUE_LENGTH = 256;
-        public string Name;
+        public readonly string Name;
         public string Value
         {
             get
@@ -44,7 +44,7 @@ namespace NUTDotNetShared
                     varValue = value;
             }
         }
-        public Flags Flags
+        public VarFlags Flags
         {
             get
             {
@@ -52,7 +52,7 @@ namespace NUTDotNetShared
             }
             set
             {
-                if (value == (Flags.String & Flags.Number))
+                if (value == (VarFlags.String & VarFlags.Number))
                     throw new ArgumentException("A variable cannot be both a string and a number.");
                 else
                     flags = value;
@@ -60,7 +60,15 @@ namespace NUTDotNetShared
         }
         public List<string> Enumerations;
         // The second dimension of the array is a length of 2, representing a min and max of the range.
-        public int[,] Ranges;
-        public List<string> InstantCommands;
+        public List<Tuple<int, int>> Ranges;
+
+        public UPSVariable(string name, VarFlags flags)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ArgumentException("Name variable cannot be blank or null.");
+
+            Name = name;
+            Flags = flags;
+        }
     }
 }

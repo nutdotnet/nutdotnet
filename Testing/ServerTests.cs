@@ -264,14 +264,14 @@ namespace ServerMockupTests
     {
         DisposableTestData testData;
         ServerUPS testUPS1 = new ServerUPS("TestUPS1", "Test description");
-        string testVarKey = "TestVar1";
-        string testVarVal = "Test var value";
+        UPSVariable testVar = new UPSVariable("TestVar1", VarFlags.String);
 
         public GetQueryTests()
         {
             testData = new DisposableTestData(false);
 
-            testUPS1.Variables.Add(testVarKey, testVarVal);
+            testVar.Value = "Test var value";
+            testUPS1.Variables.Add(testVar);
             testData.Server.UPSs.Add(testUPS1);
         }
 
@@ -324,8 +324,8 @@ namespace ServerMockupTests
 
             // Now test a valid query.
 
-            testData.Writer.WriteLine("GET VAR " + testUPS1.Name + " " + testVarKey);
-            Assert.Equal("VAR " + testUPS1.Name + " " + testVarKey + " \"" + testVarVal + "\"",
+            testData.Writer.WriteLine("GET VAR " + testUPS1.Name + " " + testVar.Name);
+            Assert.Equal("VAR " + testUPS1.Name + " " + testVar.Name + " \"" + testVar.Value + "\"",
                 testData.Reader.ReadLine());
         }
     }
@@ -448,8 +448,12 @@ namespace ServerMockupTests
                 "END LIST VAR SampleUPS\n";
             using DisposableTestData testData = new DisposableTestData(false);
             ServerUPS sampleUPS = new ServerUPS("SampleUPS");
-            sampleUPS.Variables.Add("testvar", "testval");
-            sampleUPS.Rewritables.Add("testrw", "testrwval");
+            UPSVariable sampleVar = new UPSVariable("testvar", VarFlags.String);
+            sampleVar.Value = "testval";
+            sampleUPS.Variables.Add(sampleVar);
+            sampleVar = new UPSVariable("testrw", VarFlags.RW);
+            sampleVar.Value = "testrwval";
+            sampleUPS.Variables.Add(sampleVar);
             testData.Server.UPSs.Add(sampleUPS);
             testData.Writer.WriteLine("LIST VAR " + sampleUPS.Name);
             string response = testData.ReadListResponse();
@@ -486,7 +490,7 @@ namespace ServerMockupTests
                 "END LIST CMD SampleUPS\n";
             using DisposableTestData testData = new DisposableTestData(false);
             ServerUPS sampleUPS = new ServerUPS("SampleUPS");
-            sampleUPS.Commands.Add("testcmd", null);
+            sampleUPS.InstantCommands.Add("testcmd");
             testData.Server.UPSs.Add(sampleUPS);
             testData.Writer.WriteLine("LIST CMD " + sampleUPS.Name);
             string response = testData.ReadListResponse();
@@ -527,7 +531,9 @@ namespace ServerMockupTests
                 "ENUM SampleUPS testenum \"2\"\nENUM SampleUPS testenum \"3\"\nEND LIST ENUM SampleUPS testenum\n";
             using DisposableTestData testData = new DisposableTestData(true);
             ServerUPS sampleUPS = new ServerUPS("SampleUPS");
-            sampleUPS.Enumerations.Add("testenum", new List<string> { "1", "2", "3" });
+            UPSVariable sampleVar = new UPSVariable("testenum", VarFlags.None);
+            sampleVar.Enumerations.AddRange(new string[] { "1", "2", "3" });
+            sampleUPS.Variables.Add(sampleVar);
             testData.Server.UPSs.Add(sampleUPS);
             testData.Writer.WriteLine("LIST ENUM " + sampleUPS.Name + " testenum");
             string response = testData.ReadListResponse();
@@ -569,8 +575,9 @@ namespace ServerMockupTests
                 "RANGE SampleUPS testrange \"3\" \"4\"\nEND LIST RANGE SampleUPS testrange\n";
             using DisposableTestData testData = new DisposableTestData(true);
             ServerUPS sampleUPS = new ServerUPS("SampleUPS");
-            sampleUPS.AddRange("testrange", new string[] { "1", "2" });
-            sampleUPS.AddRange("testrange", new string[] { "3", "4" });
+            UPSVariable sampleVar = new UPSVariable("testrange", VarFlags.None);
+            sampleVar.Ranges.AddRange(new Tuple<int, int>[] { new Tuple<int, int>(1, 2), new Tuple<int, int>(3, 4) });
+            sampleUPS.Variables.Add(sampleVar);
             testData.Server.UPSs.Add(sampleUPS);
             testData.Writer.WriteLine("LIST RANGE " + sampleUPS.Name + " testrange");
             string response = testData.ReadListResponse();
