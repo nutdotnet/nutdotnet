@@ -432,6 +432,20 @@ namespace NUTDotNetServer
             }
         }
 
+        string GetVarType(UPSVariable upsVar)
+        {
+            if (upsVar.Enumerations.Count > 0)
+                return "ENUM";
+            else if (upsVar.Ranges.Count > 0)
+                return "RANGE";
+            else if (upsVar.Flags.HasFlag(VarFlags.String))
+                return "STRING:" + upsVar.Value.Length;
+            else if (upsVar.Flags.HasFlag(VarFlags.RW))
+                return "RW";
+            else
+                return "NUMBER";
+        }
+
         /// <summary>
         /// Parses and processes one of the GET queries.
         /// </summary>
@@ -443,36 +457,27 @@ namespace NUTDotNetServer
             try
             {
                 string subquery = splitQuery.Length >= 2 ? splitQuery[1] : string.Empty;
-                ServerUPS ups;
+                ServerUPS ups = GetUPSByName(splitQuery[2]);
                 string itemName = splitQuery.Length >= 4 ? splitQuery[3] : string.Empty;
 
                 if (subquery.Equals("NUMLOGINS"))
                 {
-                    ups = GetUPSByName(splitQuery[2]);
                     response.AppendFormat("NUMLOGINS {0} {1}{2}", ups.Name, ups.Clients.Count, NUTCommon.NewLine);
                 }
                 else if (subquery.Equals("UPSDESC"))
                 {
-                    ups = GetUPSByName(splitQuery[2]);
                     response.AppendFormat("UPSDESC {0} \"{1}\"{2}", ups.Name, ups.Description, NUTCommon.NewLine);
                 }
                 else if (subquery.Equals("VAR") && splitQuery.Length == 4)
                 {
-                    ups = GetUPSByName(splitQuery[2]);
-                    UPSVariable upsVar;
-                    try
-                    {
-                        upsVar = ups.GetVariableByName(itemName);
-                    }
-                    catch (Exception)
-                    {
-                        return "ERR VAR-NOT-SUPPORTED" + NUTCommon.NewLine;
-                    }
+                    UPSVariable upsVar = ups.GetVariableByName(itemName);
                     response.AppendFormat("VAR {0} {1} \"{2}\"{3}", ups.Name, itemName, upsVar.Value, NUTCommon.NewLine);
                 }
-                else if (subquery.Equals("TYPE"))
+                else if (subquery.Equals("TYPE") && splitQuery.Length == 4)
                 {
-
+                    UPSVariable upsVar = ups.GetVariableByName(itemName);
+                    string type = GetVarType(upsVar);
+                    response.AppendFormat("TYPE {0} {1} {2}{3}", ups.Name, itemName, type, NUTCommon.NewLine);
                 }
                 else if (subquery.Equals("DESC"))
                 {
@@ -492,6 +497,10 @@ namespace NUTDotNetServer
                 return "ERR INVALID-ARGUMENT" + NUTCommon.NewLine;
             }
             catch (KeyNotFoundException)
+            {
+                return "ERR VAR-NOT-SUPPORTED" + NUTCommon.NewLine;
+            }
+            catch (InvalidOperationException)
             {
                 return "ERR VAR-NOT-SUPPORTED" + NUTCommon.NewLine;
             }

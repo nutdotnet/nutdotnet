@@ -58,7 +58,7 @@ namespace ServerMockupTests
             testData.Writer.WriteLine("GET VAR");
             Assert.Equal("ERR INVALID-ARGUMENT", testData.Reader.ReadLine());
             testData.Writer.WriteLine("GET VAR FOO");
-            Assert.Equal("ERR INVALID-ARGUMENT", testData.Reader.ReadLine());
+            Assert.Equal("ERR UNKNOWN-UPS", testData.Reader.ReadLine());
             testData.Writer.WriteLine("GET VAR FOO BAR");
             Assert.Equal("ERR UNKNOWN-UPS", testData.Reader.ReadLine());
             testData.Writer.WriteLine("GET VAR " + testUPS1.Name);
@@ -70,6 +70,41 @@ namespace ServerMockupTests
 
             testData.Writer.WriteLine("GET VAR " + testUPS1.Name + " " + testVar.Name);
             Assert.Equal("VAR " + testUPS1.Name + " " + testVar.Name + " \"" + testVar.Value + "\"",
+                testData.Reader.ReadLine());
+        }
+
+        [Fact]
+        public void TestGetTypeQueries()
+        {
+            // Execute bad queries first.
+            testData.Writer.WriteLine("GET TYPE");
+            Assert.Equal("ERR INVALID-ARGUMENT", testData.Reader.ReadLine());
+            testData.Writer.WriteLine("GET TYPE FOO");
+            Assert.Equal("ERR UNKNOWN-UPS", testData.Reader.ReadLine());
+            testData.Writer.WriteLine("GET TYPE FOO BAR");
+            Assert.Equal("ERR UNKNOWN-UPS", testData.Reader.ReadLine());
+            testData.Writer.WriteLine("GET TYPE " + testUPS1.Name);
+            Assert.Equal("ERR INVALID-ARGUMENT", testData.Reader.ReadLine());
+            testData.Writer.WriteLine("GET TYPE " + testUPS1.Name + " foo");
+            Assert.Equal("ERR VAR-NOT-SUPPORTED", testData.Reader.ReadLine());
+
+            // Valid queries
+            testData.Writer.WriteLine("GET TYPE " + testUPS1.Name + " " + testVar.Name);
+            Assert.Equal("TYPE " + testUPS1.Name + " " + testVar.Name + " STRING:" + testVar.Value.Length,
+                testData.Reader.ReadLine());
+
+            UPSVariable testVar2 = new UPSVariable("TestVar2", VarFlags.None);
+            testVar2.Enumerations.Add("testEnum");
+            testData.Server.UPSs[0].Variables.Add(testVar2);
+            testData.Writer.WriteLine("GET TYPE " + testUPS1.Name + " " + testVar2.Name);
+            Assert.Equal("TYPE " + testUPS1.Name + " " + testVar2.Name + " ENUM",
+                testData.Reader.ReadLine());
+
+            UPSVariable testVar3 = new UPSVariable("TestVar3", VarFlags.Number);
+            testVar3.Value = "123";
+            testData.Server.UPSs[0].Variables.Add(testVar3);
+            testData.Writer.WriteLine("GET TYPE " + testUPS1.Name + " " + testVar3.Name);
+            Assert.Equal("TYPE " + testUPS1.Name + " " + testVar3.Name + " NUMBER",
                 testData.Reader.ReadLine());
         }
     }
