@@ -50,9 +50,9 @@ namespace NUTDotNetShared
             {
                 return flags;
             }
-            set
+            private set
             {
-                if (value == (VarFlags.String & VarFlags.Number))
+                if (value.HasFlag(VarFlags.String | VarFlags.Number))
                     throw new ArgumentException("A variable cannot be both a string and a number.");
                 else
                     flags = value;
@@ -69,6 +69,8 @@ namespace NUTDotNetShared
 
             Name = name;
             Flags = flags;
+            Enumerations = new List<string>();
+            Ranges = new List<Tuple<int, int>>();
         }
     }
 }

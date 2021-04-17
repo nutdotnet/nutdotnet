@@ -11,33 +11,15 @@ namespace NUTDotNetShared
         protected List<string> clients;
         public List<UPSVariable> Variables;
         public List<string> InstantCommands;
-        /*protected List<string> commands;
-        protected Dictionary<string, string> variables;
-        protected Dictionary<string, string> rewritables;
-        protected Dictionary<string, List<string>> enumerations;
-        protected readonly Dictionary<string, List<string[]>> ranges;*/
 
         public AbstractUPS(string name, string description = "Unavailable")
         {
             Name = name;
             Description = description;
-            /*variables = new Dictionary<string, string>();
-            rewritables = new Dictionary<string, string>();
-            commands = new List<string>();
-            enumerations = new Dictionary<string, List<string>>();
-            ranges = new Dictionary<string, List<string[]>>();*/
             Variables = new List<UPSVariable>();
             clients = new List<string>();
             InstantCommands = new List<string>();
         }
-
-        /*public void AddRange(string name, string[] values)
-        {
-            if (ranges.ContainsKey(name))
-                ranges[name].Add(values);
-            else
-                ranges[name] = new List<string[]>() { values };
-        }*/
 
         /// <summary>
         /// Returns the first variable/state matching the given name.
@@ -46,16 +28,8 @@ namespace NUTDotNetShared
         /// <returns></returns>
         public UPSVariable GetVariableByName(string varName)
         {
-            UPSVariable returnVar = null;
-
-            try
-            {
-                returnVar = Variables.Where(var => var.Name.Equals(varName)).First();
-            }
-            catch (InvalidOperationException)
-            {
-
-            }
+            UPSVariable returnVar;
+            returnVar = Variables.Where(var => var.Name.Equals(varName)).First();
 
             return returnVar;
         }
@@ -75,7 +49,7 @@ namespace NUTDotNetShared
             switch (listType)
             {
                 case VarList.Variables:
-                    return Variables.Where(v => v.Flags == (VarFlags.Number | VarFlags.String));
+                    return Variables.Where(v => (v.Flags & (VarFlags.Number | VarFlags.String)) != 0);
                 case VarList.Rewritables:
                     return Variables.Where(v => v.Flags == VarFlags.RW);
                 case VarList.Enumerations:

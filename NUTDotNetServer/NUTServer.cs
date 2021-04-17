@@ -178,13 +178,8 @@ namespace NUTDotNetServer
                     ClientMetadata newClientMetadata = new ClientMetadata(newClient);
                     clients.TryAdd(newClientMetadata.Ip, newClientMetadata);
                     clientsLastSeen.TryAdd(newClientMetadata.Ip, DateTime.Now);
-                    /*if (ClientTimeout > 0)
-                        clientTimeout = new Timer(TimeoutClient, newClient, ClientTimeout * 1000, Timeout.Infinite);*/
                     Debug.WriteLine("Starting data receiving for client " + newClientMetadata.Ip);
                     Task dataReceiverTask = Task.Run(() => DataReceiver(newClientMetadata), cancellationToken);
-
-                    /*newClient.Close();
-                    clients.TryRemove(newClientMetadata.IpPort, out ClientMetadata clientMetadata);*/
                 }
                 catch (TaskCanceledException)
                 {
@@ -464,7 +459,15 @@ namespace NUTDotNetServer
                 else if (subquery.Equals("VAR") && splitQuery.Length == 4)
                 {
                     ups = GetUPSByName(splitQuery[2]);
-                    UPSVariable upsVar = ups.GetVariableByName(itemName);
+                    UPSVariable upsVar;
+                    try
+                    {
+                        upsVar = ups.GetVariableByName(itemName);
+                    }
+                    catch (Exception)
+                    {
+                        return "ERR VAR-NOT-SUPPORTED" + NUTCommon.NewLine;
+                    }
                     response.AppendFormat("VAR {0} {1} \"{2}\"{3}", ups.Name, itemName, upsVar.Value, NUTCommon.NewLine);
                 }
                 else if (subquery.Equals("TYPE"))
