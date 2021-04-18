@@ -30,6 +30,7 @@ namespace NUTDotNetShared
 
         public static readonly int MAX_VALUE_LENGTH = 256;
         public readonly string Name;
+        public string Description;
         public string Value
         {
             get

@@ -481,7 +481,11 @@ namespace NUTDotNetServer
                 }
                 else if (subquery.Equals("DESC"))
                 {
-
+                    UPSVariable upsVar = ups.GetVariableByName(itemName);
+                    string description = string.IsNullOrWhiteSpace(upsVar.Description) ?
+                        "Description unavailable" : upsVar.Description;
+                    response.AppendFormat("DESC {0} {1} \"{2}\"{3}", ups.Name, itemName, description,
+                        NUTCommon.NewLine);
                 }
                 else if (subquery.Equals("CMDDESC"))
                 {

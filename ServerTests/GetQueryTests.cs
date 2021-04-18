@@ -15,6 +15,7 @@ namespace ServerMockupTests
             testData = new DisposableTestData(false);
 
             testVar.Value = "Test var value";
+            testVar.Description = "Test description";
             testUPS1.Variables.Add(testVar);
             testData.Server.UPSs.Add(testUPS1);
         }
@@ -105,6 +106,28 @@ namespace ServerMockupTests
             testData.Server.UPSs[0].Variables.Add(testVar3);
             testData.Writer.WriteLine("GET TYPE " + testUPS1.Name + " " + testVar3.Name);
             Assert.Equal("TYPE " + testUPS1.Name + " " + testVar3.Name + " NUMBER",
+                testData.Reader.ReadLine());
+        }
+
+        [Fact]
+        public void TestGetDescQueries()
+        {
+            // Execute bad queries first.
+            testData.Writer.WriteLine("GET DESC");
+            Assert.Equal("ERR INVALID-ARGUMENT", testData.Reader.ReadLine());
+            testData.Writer.WriteLine("GET DESC FOO");
+            Assert.Equal("ERR UNKNOWN-UPS", testData.Reader.ReadLine());
+            testData.Writer.WriteLine("GET DESC FOO BAR");
+            Assert.Equal("ERR UNKNOWN-UPS", testData.Reader.ReadLine());
+            testData.Writer.WriteLine("GET DESC " + testUPS1.Name);
+            Assert.Equal("ERR VAR-NOT-SUPPORTED", testData.Reader.ReadLine());
+            testData.Writer.WriteLine("GET DESC " + testUPS1.Name + " foo");
+            Assert.Equal("ERR VAR-NOT-SUPPORTED", testData.Reader.ReadLine());
+
+            // Now test a valid query.
+
+            testData.Writer.WriteLine("GET DESC " + testUPS1.Name + " " + testVar.Name);
+            Assert.Equal("DESC " + testUPS1.Name + " " + testVar.Name + " \"" + testVar.Description + "\"",
                 testData.Reader.ReadLine());
         }
     }
