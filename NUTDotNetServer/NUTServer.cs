@@ -421,7 +421,7 @@ namespace NUTDotNetServer
             try
             {
                 ServerUPS upsObject = GetUPSByName(upsName);
-                if (!upsObject.InstantCommands.Contains(cmdName))
+                if (!upsObject.InstantCommands.ContainsKey(cmdName))
                     return "ERR CMD-NOT-SUPPORTED" + NUTCommon.NewLine;
                 else
                     return "OK" + NUTCommon.NewLine;
@@ -489,7 +489,10 @@ namespace NUTDotNetServer
                 }
                 else if (subquery.Equals("CMDDESC"))
                 {
-
+                    if (!ups.InstantCommands.TryGetValue(itemName, out string description))
+                        description = "Description unavailable";
+                    response.AppendFormat("CMDDESC {0} {1} \"{2}\"{3}", ups.Name, itemName, description,
+                        NUTCommon.NewLine);
                 }
                 else
                     throw new Exception("ERR INVALID-ARGUMENT");
@@ -548,7 +551,7 @@ namespace NUTDotNetServer
                             response.AppendFormat("{0} {1} {2} \"{3}\"{4}", subquery, upsObject.Name, var.Name,
                                 var.Value, NUTCommon.NewLine);
                     else if (subquery.Equals("CMD"))
-                        foreach (string var in upsObject.InstantCommands)
+                        foreach (string var in upsObject.InstantCommands.Keys)
                             response.AppendFormat("{0} {1} {2}{3}", subquery, upsObject.Name, var,
                                 NUTCommon.NewLine);
                     else if (subquery.Equals("CLIENT"))

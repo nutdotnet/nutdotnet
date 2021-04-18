@@ -166,7 +166,7 @@ namespace ServerMockupTests
                 "END LIST CMD SampleUPS\n";
             using DisposableTestData testData = new DisposableTestData(false);
             ServerUPS sampleUPS = new ServerUPS("SampleUPS");
-            sampleUPS.InstantCommands.Add("testcmd");
+            sampleUPS.InstantCommands.Add("testcmd", string.Empty);
             testData.Server.UPSs.Add(sampleUPS);
             testData.Writer.WriteLine("LIST CMD " + sampleUPS.Name);
             string response = testData.ReadListResponse();

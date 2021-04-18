@@ -16,6 +16,7 @@ namespace ServerMockupTests
 
             testVar.Value = "Test var value";
             testVar.Description = "Test description";
+            testUPS1.InstantCommands.Add("Test.instcmd", "Test instcmd desc");
             testUPS1.Variables.Add(testVar);
             testData.Server.UPSs.Add(testUPS1);
         }
@@ -128,6 +129,28 @@ namespace ServerMockupTests
 
             testData.Writer.WriteLine("GET DESC " + testUPS1.Name + " " + testVar.Name);
             Assert.Equal("DESC " + testUPS1.Name + " " + testVar.Name + " \"" + testVar.Description + "\"",
+                testData.Reader.ReadLine());
+        }
+
+        [Fact]
+        public void TestGetCmdDescQueries()
+        {
+            // Execute bad queries first.
+            testData.Writer.WriteLine("GET CMDDESC");
+            Assert.Equal("ERR INVALID-ARGUMENT", testData.Reader.ReadLine());
+            testData.Writer.WriteLine("GET CMDDESC FOO");
+            Assert.Equal("ERR UNKNOWN-UPS", testData.Reader.ReadLine());
+            testData.Writer.WriteLine("GET CMDDESC FOO BAR");
+            Assert.Equal("ERR UNKNOWN-UPS", testData.Reader.ReadLine());
+            testData.Writer.WriteLine("GET CMDDESC " + testUPS1.Name);
+            Assert.Equal("CMDDESC " + testUPS1.Name + "  \"Description unavailable\"", testData.Reader.ReadLine());
+            testData.Writer.WriteLine("GET CMDDESC " + testUPS1.Name + " foo");
+            Assert.Equal("CMDDESC " + testUPS1.Name + " foo \"Description unavailable\"", testData.Reader.ReadLine());
+
+            // Now test a valid query.
+
+            testData.Writer.WriteLine("GET CMDDESC " + testUPS1.Name + " Test.instcmd");
+            Assert.Equal("CMDDESC " + testUPS1.Name + " Test.instcmd \"Test instcmd desc\"",
                 testData.Reader.ReadLine());
         }
     }

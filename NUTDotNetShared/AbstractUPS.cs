@@ -10,7 +10,10 @@ namespace NUTDotNetShared
         public readonly string Description;
         protected List<string> clients;
         public List<UPSVariable> Variables;
-        public List<string> InstantCommands;
+        /// <summary>
+        /// Command name and description, if available.
+        /// </summary>
+        public Dictionary<string, string> InstantCommands;
 
         public AbstractUPS(string name, string description = "Unavailable")
         {
@@ -18,7 +21,7 @@ namespace NUTDotNetShared
             Description = description;
             Variables = new List<UPSVariable>();
             clients = new List<string>();
-            InstantCommands = new List<string>();
+            InstantCommands = new Dictionary<string, string>();
         }
 
         /// <summary>
