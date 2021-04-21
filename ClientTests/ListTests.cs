@@ -37,7 +37,7 @@ namespace Testing
         {
             SetupTestData();
             ClientUPS ups = testFixture.testClient.GetUPSes()[0];
-            Dictionary<string, string> emptyVals = ups.GetVariables();
+            List<UPSVariable> emptyVals = ups.GetVariables();
             Assert.Empty(emptyVals);
             ClearTestData();
         }
@@ -46,80 +46,82 @@ namespace Testing
         public void GetUPSVarsList()
         {
             SetupTestData();
-            Dictionary<string, string> testVars = new Dictionary<string, string>()
+            List<UPSVariable> testVars = new List<UPSVariable>()
             {
-                { "varName1", "varValue1" },
-                { "varName2", "varValue2" },
-                { "varName3", "varValue3" }
+                new UPSVariable("varName1", VarFlags.String),
+                new UPSVariable("varName2", VarFlags.String),
+                new UPSVariable("varName3", VarFlags.String)
             };
-            testFixture.testServer.UPSs[0].Variables = testVars;
-            Dictionary<string, string> getVars = testFixture.testClient.GetUPSes()[0].GetVariables();
+            testFixture.testServer.UPSs[0].Variables.UnionWith(testVars);
+            List<UPSVariable> getVars = testFixture.testClient.GetUPSes()[0].GetVariables();
             ClearTestData();
-            Assert.Equal(testVars, getVars);
+            Assert.All(getVars, var => testVars.ForEach(tVar => tVar.Name.Equals(var.Name)));
         }
 
         [Fact]
         public void GetUPSRWsList()
         {
             SetupTestData();
-            Dictionary<string, string> testVars = new Dictionary<string, string>()
+            List<UPSVariable> testVars = new List<UPSVariable>()
             {
-                { "rwName1", "rwValue1" },
-                { "rwName2", "rwValue2" },
-                { "rwName3", "rwValue3" }
+                new UPSVariable("varName1", VarFlags.RW),
+                new UPSVariable("varName2", VarFlags.RW),
+                new UPSVariable("varName3", VarFlags.RW)
             };
-            testFixture.testServer.UPSs[0].Rewritables = testVars;
-            Dictionary<string, string> getVars = testFixture.testClient.GetUPSes()[0].GetRewritables();
+            testFixture.testServer.UPSs[0].Variables.UnionWith(testVars);
+            List<UPSVariable> getVars = testFixture.testClient.GetUPSes()[0].GetRewritables();
             ClearTestData();
-            Assert.Equal(testVars, getVars);
+            Assert.All(getVars, var => testVars.Contains(var));
         }
 
         [Fact]
         public void GetUPSCommandsList()
         {
             SetupTestData();
-            Dictionary<string, Action> testVars = new Dictionary<string, Action>
+            Dictionary<string, string> testVars = new Dictionary<string, string>
             {
                 { "cmdName1", null },
                 { "cmdName2", null },
                 { "cmdName3", null }
             };
-            testFixture.testServer.UPSs[0].Commands = testVars;
-            List<string> getVars = testFixture.testClient.GetUPSes()[0].GetCommands();
+            testFixture.testServer.UPSs[0].InstantCommands = testVars;
+            Dictionary<string, string> getVars = testFixture.testClient.GetUPSes()[0].GetCommands();
             ClearTestData();
-            Assert.All(getVars, var => testVars.ContainsKey(var));
+            Assert.All(getVars, var => testVars.ContainsKey(var.Key));
         }
 
         [Fact]
         public void GetUPSEnumerationssList()
         {
             SetupTestData();
-            string propName = "testEnum";
-            List<string> testVars = new List<string>
+            UPSVariable enumVar = new UPSVariable("testEnum", VarFlags.None);
+            List<string> enumList = new List<string>
             {
                 { "enumVal1" },
                 { "enumVal2" },
                 { "enumVal3" }
             };
-            testFixture.testServer.UPSs[0].Enumerations[propName] = testVars;
-            List<string> getVars = testFixture.testClient.GetUPSes()[0].GetEnumerations(propName);
+            enumVar.Enumerations.AddRange(enumList);
+            testFixture.testServer.UPSs[0].Variables.Add(enumVar);
+            List<string> getEnums = testFixture.testClient.GetUPSes()[0].GetEnumerations(enumVar.Name);
             ClearTestData();
-            Assert.Equal(testVars, getVars);
+            Assert.Equal(enumList, getEnums);
         }
 
         [Fact]
         public void GetUPSRangesList()
         {
             SetupTestData();
-            string propName = "testRange";
-            List<string[]> testVars = new List<string[]>
+            UPSVariable rangeVar = new UPSVariable("testRange", VarFlags.None);
+            List<Tuple<int, int>> testVars = new List<Tuple<int, int>>
             {
-                new string[] { "rangeVal1", "rangeVal2" },
-                new string[] { "rangeVal3", "rangeVal4" },
-                new string[] { "rangeVal5", "rangeVal6" }
+                new Tuple<int, int>(1, 2),
+                new Tuple<int, int>(3, 4),
+                new Tuple<int, int>(5, 6)
             };
-            testVars.ForEach(val => testFixture.testServer.UPSs[0].AddRange(propName, val));
-            List<string[]> getVars = testFixture.testClient.GetUPSes()[0].GetRanges(propName);
+            rangeVar.Ranges.AddRange(testVars);
+            testFixture.testServer.UPSs[0].Variables.Add(rangeVar);
+            List<Tuple<int, int>> getVars = testFixture.testClient.GetUPSes()[0].GetRanges(rangeVar.Name);
             ClearTestData();
             Assert.Equal(testVars, getVars);
         }

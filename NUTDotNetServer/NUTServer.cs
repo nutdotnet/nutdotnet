@@ -405,7 +405,7 @@ namespace NUTDotNetServer
             }
             catch (Exception ex)
             {
-                return ex.Message + NUTCommon.NewLine;
+                return "ERR VAR-NOT-SUPPORTED" + NUTCommon.NewLine;
             }
         }
 

@@ -152,12 +152,12 @@ namespace Testing
         {
             SetupTestData();
             ServerUPS testUPS = new ServerUPS("InstCmdTestUPS");
-            testUPS.Commands.Add("TestCmd", delegate { return; });
+            testUPS.InstantCommands.Add("TestCmd", string.Empty);
             testFixture.testServer.UPSs.Add(testUPS);
             ClientUPS clientUPS = testFixture.testClient.GetUPSes()[0];
 
             // Try running a command that's not in the range of available commands.
-            Assert.Throws<ArgumentOutOfRangeException>(() => clientUPS.DoInstantCommand(1));
+            Assert.Throws<NUTException>(() => clientUPS.DoInstantCommand("FooBar"));
             ClearTestData();
         }
 
@@ -166,11 +166,11 @@ namespace Testing
         {
             SetupTestData();
             ServerUPS testUPS = new ServerUPS("InstCmdTestUPS");
-            testUPS.Commands.Add("TestCmd", delegate { return; });
+            testUPS.InstantCommands.Add("TestCmd", string.Empty);
             testFixture.testServer.UPSs.Add(testUPS);
             ClientUPS clientUPS = testFixture.testClient.GetUPSes()[0];
 
-            clientUPS.DoInstantCommand(0);
+            clientUPS.DoInstantCommand("TestCmd");
             ClearTestData();
         }
 
@@ -179,11 +179,13 @@ namespace Testing
         {
             SetupTestData();
             ServerUPS testUPS = new ServerUPS("SetVarTestUPS");
-            testUPS.Rewritables.Add("testRW", "initialValue");
+            UPSVariable testRW = new UPSVariable("testRW", VarFlags.RW);
+            testRW.Value = "initialValue";
+            testUPS.Variables.Add(testRW);
             testFixture.testServer.UPSs.Add(testUPS);
 
             ClientUPS clientUPS = testFixture.testClient.GetUPSes()[0];
-            Assert.Throws<KeyNotFoundException>(() => clientUPS.SetVariable("badVar", "badVal"));
+            Assert.Throws<NUTException>(() => clientUPS.SetVariable("badVar", "badVal"));
             ClearTestData();
         }
 
@@ -192,13 +194,16 @@ namespace Testing
         {
             SetupTestData();
             ServerUPS testUPS = new ServerUPS("SetVarTestUPS");
-            testUPS.Rewritables.Add("testRW", "initialValue");
+            UPSVariable testRW = new UPSVariable("testRW", VarFlags.RW);
+            testRW.Value = "initialValue";
+            testUPS.Variables.Add(testRW);
             testFixture.testServer.UPSs.Add(testUPS);
 
             ClientUPS clientUPS = testFixture.testClient.GetUPSes()[0];
             clientUPS.SetVariable("testRW", "newValue");
+            UPSVariable compareVar = clientUPS.GetRewritables()[0];
             ClearTestData();
-            Assert.Equal(testUPS.Rewritables["testRW"], clientUPS.GetRewritables()["testRW"]);
+            Assert.Equal("newValue", compareVar.Value);
         }
 
         [Fact]

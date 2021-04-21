@@ -69,12 +69,10 @@ namespace NUTDotNetClient
         /// <summary>
         /// Sends an INSTCMD query to the NUT server for execution. Throws an error if unsuccessful.
         /// </summary>
-        /// <param name="commandId">The index of the command found from calling GetCommands.</param>
-        public void DoInstantCommand(int commandId)
+        /// <param name="command">The name of the command to be run.</param>
+        public void DoInstantCommand(string command)
         {
-            if (commands.Count == 0)
-                GetCommands();
-            client.SendQuery(string.Format("INSTCMD {0} {1}", Name, commands[commandId]));
+            client.SendQuery(string.Format("INSTCMD {0} {1}", Name, command));
         }
 
         /// <summary>
@@ -85,72 +83,109 @@ namespace NUTDotNetClient
         /// <param name="value">The value that this variable should be set to.</param>
         public void SetVariable(string rewritableKey, string value)
         {
-            if (rewritables.Count == 0)
-                GetRewritables();
-            if (!rewritables.ContainsKey(rewritableKey))
-                throw new KeyNotFoundException("Attempted to set a non-existent variable.");
             client.SendQuery(string.Format("SET VAR {0} {1} \"{2}\"", Name, rewritableKey, value));
             GetRewritables(true);
         }
 
         /// <summary>
-        /// Gets the variables assigned to this UPS from the server, in a name-value format.
+        /// Gets the variables assigned to this UPS from the server. Note: All variables will have the "None" flag
+        /// since this information isn't returned from the server by default. Use GET TYPE (ups) (var name) to find
+        /// the correct flags.
         /// </summary>
-        /// <param name="forceUpdate">Download the list of variables from the server even if one is cached here.</param>
+        /// <param name="forceUpdate">Download the list of variables from the server,even if one is cached here.
+        /// </param>
         /// <returns></returns>
-        public Dictionary<string, string> GetVariables(bool forceUpdate = false)
+        public List<UPSVariable> GetVariables(bool forceUpdate = false)
         {
+            List<UPSVariable> variables = new List<UPSVariable>(GetListOfVariables(VarList.Variables));
             if (forceUpdate || variables.Count == 0)
             {
+                // Remove any duplicate variables from the set first.
+                Variables.ExceptWith(variables);
                 List<string[]> response = GetListResponse("VAR");
-                variables = new Dictionary<string, string>(response.Count);
-                response.ForEach(str => variables.Add(str[2], str[3]));
+                foreach (string[] str in response)
+                {
+                    UPSVariable var = new UPSVariable(str[2], VarFlags.None);
+                    var.Value = str[3];
+                    variables.Add(var);
+                }
+                // Now add the updated list of variables back in.
+                Variables.UnionWith(variables);
             }
             return variables;
         }
 
-        public Dictionary<string, string> GetRewritables(bool forceUpdate = false)
+        public List<UPSVariable> GetRewritables(bool forceUpdate = false)
         {
+            List<UPSVariable> rewritables = new List<UPSVariable>(GetListOfVariables(VarList.Rewritables));
             if (forceUpdate || rewritables.Count == 0)
             {
+                Variables.ExceptWith(rewritables);
                 List<string[]> response = GetListResponse("RW");
-                rewritables = new Dictionary<string, string>();
-                response.ForEach(str => rewritables.Add(str[2], str[3]));
+                foreach (string[] str in response)
+                {
+                    UPSVariable var = new UPSVariable(str[2], VarFlags.RW);
+                    var.Value = str[3];
+                    rewritables.Add(var);
+                }
+                Variables.UnionWith(rewritables);
             }
             return rewritables;
         }
 
-        public List<string> GetCommands(bool forceUpdate = false)
+        public Dictionary<string, string> GetCommands(bool forceUpdate = false)
         {
-            if (forceUpdate || commands.Count == 0)
+            if (forceUpdate || InstantCommands.Count == 0)
             {
                 List<string[]> response = GetListResponse("CMD");
-                commands = new List<string>();
-                response.ForEach(str => commands.Add(str[2]));
+                InstantCommands = new Dictionary<string, string>();
+                response.ForEach(str => InstantCommands.Add(str[2], string.Empty));
             }
-            return commands;
+            return InstantCommands;
         }
 
         public List<string> GetEnumerations(string enumName, bool forceUpdate = false)
         {
-            if (forceUpdate || !enumerations.ContainsKey(enumName))
+            UPSVariable var = null;
+            try
             {
-                List<string[]> response = GetListResponse("ENUM", enumName);
-                enumerations[enumName] = new List<string>(response.Count);
-                response.ForEach(str => enumerations[enumName].Add(str[3]));
+                var = GetVariableByName(enumName);
             }
-            return enumerations[enumName];
+            catch (InvalidOperationException)
+            {
+
+            }
+
+            if (forceUpdate || var is null)
+            {
+                var = new UPSVariable(enumName, VarFlags.None);
+                List<string[]> response = GetListResponse("ENUM", enumName);
+                var.Enumerations = new List<string>(response.Count);
+                response.ForEach(str => var.Enumerations.Add(str[3]));
+            }
+            return var.Enumerations;
         }
 
-        public List<string[]> GetRanges(string rangeName, bool forceUpdate = false)
+        public List<Tuple<int, int>> GetRanges(string rangeName, bool forceUpdate = false)
         {
-            if (forceUpdate || !ranges.ContainsKey(rangeName))
+            UPSVariable var = null;
+            try
             {
-                List<string[]> response = GetListResponse("RANGE", rangeName);
-                ranges[rangeName] = new List<string[]>(response.Count);
-                response.ForEach(str => ranges[rangeName].Add(new string[] { str[3], str[4] }));
+                var = GetVariableByName(rangeName);
             }
-            return ranges[rangeName];
+            catch (InvalidOperationException)
+            {
+
+            }
+
+            if (forceUpdate || var is null)
+            {
+                var = new UPSVariable(rangeName, VarFlags.None);
+                List<string[]> response = GetListResponse("RANGE", rangeName);
+                var.Ranges = new List<Tuple<int, int>>(response.Count);
+                response.ForEach(str => var.Ranges.Add(new Tuple<int, int>(int.Parse(str[3]), int.Parse(str[4]))));
+            }
+            return var.Ranges;
         }
 
         public List<string> GetClients(bool forceUpdate = false)

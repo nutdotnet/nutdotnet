@@ -1,7 +1,6 @@
 ﻿using NUTDotNetShared;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 
 namespace NUTDotNetServer
@@ -16,11 +15,13 @@ namespace NUTDotNetServer
             set => clients = value;
         }
 
+        public new Dictionary<string, string> InstantCommands;
+
         #endregion
 
         public ServerUPS(string name, string description = null) : base(name, description)
         {
-
+            InstantCommands = new Dictionary<string, string>();
         }
 
         #region String methods

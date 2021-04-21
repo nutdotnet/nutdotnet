@@ -7,19 +7,19 @@ namespace NUTDotNetShared
     public abstract class AbstractUPS : IEquatable<AbstractUPS>
     {
         public readonly string Name;
-        public readonly string Description;
+        public string Description;
         protected List<string> clients;
-        public List<UPSVariable> Variables;
+        public HashSet<UPSVariable> Variables;
         /// <summary>
         /// Command name and description, if available.
         /// </summary>
-        public Dictionary<string, string> InstantCommands;
+        protected Dictionary<string, string> InstantCommands;
 
         public AbstractUPS(string name, string description = "Unavailable")
         {
             Name = name;
             Description = description;
-            Variables = new List<UPSVariable>();
+            Variables = new HashSet<UPSVariable>();
             clients = new List<string>();
             InstantCommands = new Dictionary<string, string>();
         }
@@ -86,7 +86,6 @@ namespace NUTDotNetShared
             {
                 int hash = 53;
                 hash *= 23 + Name.GetHashCode();
-                hash *= 23 + Description.GetHashCode();
                 return hash;
             }
         }
