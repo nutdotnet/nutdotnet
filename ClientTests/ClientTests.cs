@@ -148,6 +148,23 @@ namespace Testing
         }
 
         [Fact]
+        public void TestGetNumLogins()
+        {
+            SetupTestData();
+
+            testFixture.testServer.UPSs.Add(new ServerUPS("NumLoginsUPS"));
+            Assert.Equal(0, testFixture.testClient.GetUPSes()[0].GetNumLogins());
+
+            testFixture.testClient.SetUsername("user");
+            testFixture.testClient.SetPassword("pass");
+            testFixture.testClient.GetUPSes()[0].Login();
+            Assert.True(testFixture.testClient.GetUPSes()[0].IsLoggedIn);
+            Assert.Equal(1, testFixture.testClient.GetUPSes()[0].GetNumLogins());
+
+            ClearTestData();
+        }
+
+        [Fact]
         public void TestBadInstCmdsQuery()
         {
             SetupTestData();

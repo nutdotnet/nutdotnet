@@ -35,6 +35,16 @@ namespace NUTDotNetClient
         }
 
         /// <summary>
+        /// Gets the number of clients logged in to this UPS. Uses the GET NUMLOGINS protocol query.
+        /// </summary>
+        /// <returns></returns>
+        public int GetNumLogins()
+        {
+            string response = client.SendQuery("GET NUMLOGINS " + Name)[0];
+            return int.Parse(response.Substring(response.LastIndexOf(" ") + 1));
+        }
+
+        /// <summary>
         /// Sends a LIST query, validates the response and breaks it down for further processing.
         /// </summary>
         /// <param name="subquery">The second portion of the LIST query, such as VAR.</param>
