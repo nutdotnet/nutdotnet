@@ -98,6 +98,46 @@ namespace NUTDotNetClient
         }
 
         /// <summary>
+        /// Retrieve a single variable either from the local variables cache, or the NUT server and update the
+        /// information stored locally. Any encountered errors will be thrown (NUTError).
+        /// </summary>
+        /// <param name="varName"></param>
+        /// <param name="forceUpdate">Get the variable from the NUT server, even if it's stored locally.</param>
+        /// <returns></returns>
+        public UPSVariable GetVariable(string varName, bool forceUpdate = false)
+        {
+            UPSVariable returnVar;
+            bool variableExists = false;
+
+            try
+            {
+                returnVar = GetVariableByName(varName);
+                Variables.Remove(returnVar);
+                variableExists = true;
+            }
+            catch (InvalidOperationException)
+            {
+                // Should figure out the variable type first so there's no confusion.
+                returnVar = new UPSVariable(varName, VarFlags.String);
+            }
+
+            // If the variable was already in the cache and user does not want a forceUpdate, then return what we have.
+            if (forceUpdate || !variableExists)
+            {
+                string[] response = client.SendQuery(string.Format("GET VAR {0} {1}", Name, varName))[0]
+                    .Split(new char[] { ' ' }, 4);
+                if (response.Length != 4 || !response[0].Equals("VAR") || !response[1].Equals(Name) ||
+                    !response[2].Equals(varName))
+                    throw new Exception("Response from NUT server was unexpected or malformed: " + response.ToString());
+
+                returnVar.Value = response[3].Replace("\"", string.Empty);
+            }
+
+            Variables.Add(returnVar);
+            return returnVar;
+        }
+
+        /// <summary>
         /// Gets the variables assigned to this UPS from the server. Note: All variables will have the "None" flag
         /// since this information isn't returned from the server by default. Use GET TYPE (ups) (var name) to find
         /// the correct flags.

@@ -73,5 +73,33 @@ namespace NUTDotNetShared
             Enumerations = new List<string>();
             Ranges = new List<Tuple<int, int>>();
         }
+
+        #region Base methods
+
+        public override bool Equals(object obj)
+        {
+            return Equals(obj as UPSVariable);
+        }
+
+        public bool Equals(UPSVariable obj)
+        {
+            return Name == obj.Name && Description == obj.Description && Value == obj.Value && Flags == obj.Flags;
+        }
+
+        /// <summary>
+        /// Override hash code. Variable names must be unique, so we're only hashing that.
+        /// </summary>
+        /// <returns></returns>
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                int hash = 53;
+                hash *= 23 + Name.GetHashCode();
+                return hash;
+            }
+        }
+
+        #endregion
     }
 }

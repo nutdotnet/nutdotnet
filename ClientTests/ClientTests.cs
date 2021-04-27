@@ -224,6 +224,35 @@ namespace Testing
         }
 
         [Fact]
+        public void TestGetVarQuery()
+        {
+            SetupTestData();
+            ServerUPS testUPS = new ServerUPS("GetVarTestUPS");
+            UPSVariable testVar = new UPSVariable("testVar", VarFlags.String);
+            testVar.Value = "initialValue";
+            testUPS.Variables.Add(testVar);
+            testFixture.testServer.UPSs.Add(testUPS);
+
+            ClientUPS clientUPS = testFixture.testClient.GetUPSes()[0];
+            UPSVariable checkVar = clientUPS.GetVariable(testVar.Name);
+            Assert.Equal(testVar, checkVar);
+
+            // Modify the value on the server, see that the client picks it up.
+            UPSVariable newTestVar = new UPSVariable(testVar.Name, testVar.Flags);
+            newTestVar.Value = "newValue";
+            testFixture.testServer.UPSs[0].Variables.RemoveWhere(var => var.Name == testVar.Name);
+            testFixture.testServer.UPSs[0].Variables.Add(newTestVar);
+            // This should still be the old value.
+            checkVar = clientUPS.GetVariable(testVar.Name);
+            Assert.Equal(testVar, checkVar);
+            // Now force update.
+            checkVar = clientUPS.GetVariable(testVar.Name, true);
+            Assert.Equal(newTestVar, checkVar);
+
+            ClearTestData();
+        }
+
+        [Fact]
         public void TestClientTimeout()
         {
             SetupTestData();
