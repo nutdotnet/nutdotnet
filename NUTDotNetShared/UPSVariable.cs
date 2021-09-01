@@ -51,7 +51,7 @@ namespace NUTDotNetShared
             {
                 return flags;
             }
-            private set
+            set
             {
                 if (value.HasFlag(VarFlags.String | VarFlags.Number))
                     throw new ArgumentException("A variable cannot be both a string and a number.");

@@ -137,6 +137,7 @@ namespace NUTDotNetClient
             return returnVar;
         }
 
+
         /// <summary>
         /// Gets the variables assigned to this UPS from the server. Note: All variables will have the "None" flag
         /// since this information isn't returned from the server by default. Use GET TYPE (ups) (var name) to find
@@ -247,6 +248,47 @@ namespace NUTDotNetClient
                 response.ForEach(str => clients.Add(str[2]));
             }
             return clients;
+        }
+
+        /// <summary>
+        /// Gets the variable flags from the server (GET TYPE ...), and updates them in the local data model.
+        /// </summary>
+        /// <param name="var">A valid locally-represented variable.</param>
+        /// <returns>True if the flags were modified, false if they are the same.</returns>
+        public bool UpdateFlags(ref UPSVariable var)
+        {
+            VarFlags newFlags = VarFlags.None;
+            string[] response = client.SendQuery(string.Format("GET TYPE {0} {1}", Name, var.Name))[0].Split(' ');
+            // Valid response must have more than 3 words, and follow a TYPE ups_name var_name type_1 [type_2] [...] format.
+            if (response.Length < 4 || !response[0].Equals("TYPE") || !response[1].Equals(Name) || !response[2].Equals(var.Name))
+                throw new Exception("Unexpected or invalid response from server: " + response.ToString());
+
+            // We can expect at least one type from the server, begin iterating over what's left.
+            for (int i = 3; i <= response.Length - 1; i++)
+            {
+                VarFlags parsedFlag = VarFlags.None;
+                // Try to parse out a flag. If that fails...
+                if (!Enum.TryParse<VarFlags>(response[i], out parsedFlag))
+                {
+                    // ...check to see if it's the string type. We don't care about the length (for now)
+                    if (response[i].StartsWith("STRING:"))
+                        parsedFlag = VarFlags.String;
+                    // If all else fails, then let the caller deal with it.
+                    else
+                        throw new Exception("Unexpected type while parsing response from server: " + response[i]);
+                }
+
+                // Combine parsed flag into our new flag.
+                newFlags |= parsedFlag;
+            }
+
+            if (newFlags != var.Flags)
+            {
+                var.Flags = newFlags;
+                return true;
+            }
+
+            return false;
         }
     }
 }
