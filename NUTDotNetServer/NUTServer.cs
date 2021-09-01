@@ -403,7 +403,7 @@ namespace NUTDotNetServer
                 upsVar.Value = value;
                 return "OK" + NUTCommon.NewLine;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return "ERR VAR-NOT-SUPPORTED" + NUTCommon.NewLine;
             }
@@ -432,18 +432,31 @@ namespace NUTDotNetServer
             }
         }
 
+        /// <summary>
+        /// Construct a string of type(s) that apply to the variable.
+        /// </summary>
+        /// <param name="upsVar"></param>
+        /// <returns></returns>
         string GetVarType(UPSVariable upsVar)
         {
+            String retString = "";
+            if (upsVar.Flags.HasFlag(VarFlags.RW))
+                retString += " RW";
+
             if (upsVar.Enumerations.Count > 0)
-                return "ENUM";
-            else if (upsVar.Ranges.Count > 0)
-                return "RANGE";
-            else if (upsVar.Flags.HasFlag(VarFlags.String))
-                return "STRING:" + upsVar.Value.Length;
-            else if (upsVar.Flags.HasFlag(VarFlags.RW))
-                return "RW";
+                retString += " ENUM";
+
+            if (upsVar.Ranges.Count > 0)
+                retString += " RANGE";
+
+            // Note: the value appended to STRING: should be the *max* length, not current length.
+            if (upsVar.Flags.HasFlag(VarFlags.String))
+                retString += " STRING:" + upsVar.Value.Length;
             else
-                return "NUMBER";
+                // netget.c: Any variable that is not string | range | enum is just a simple numeric value.
+                retString += " NUMBER";
+
+            return retString;
         }
 
         /// <summary>
@@ -477,7 +490,7 @@ namespace NUTDotNetServer
                 {
                     UPSVariable upsVar = ups.GetVariableByName(itemName);
                     string type = GetVarType(upsVar);
-                    response.AppendFormat("TYPE {0} {1} {2}{3}", ups.Name, itemName, type, NUTCommon.NewLine);
+                    response.AppendFormat("TYPE {0} {1}{2}{3}", ups.Name, itemName, type, NUTCommon.NewLine);
                 }
                 else if (subquery.Equals("DESC"))
                 {
