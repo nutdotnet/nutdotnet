@@ -99,7 +99,7 @@ namespace ServerMockupTests
             testVar2.Enumerations.Add("testEnum");
             testData.Server.UPSs[0].Variables.Add(testVar2);
             testData.Writer.WriteLine("GET TYPE " + testUPS1.Name + " " + testVar2.Name);
-            Assert.Equal("TYPE " + testUPS1.Name + " " + testVar2.Name + " ENUM",
+            Assert.Equal("TYPE " + testUPS1.Name + " " + testVar2.Name + " ENUM NUMBER",
                 testData.Reader.ReadLine());
 
             UPSVariable testVar3 = new UPSVariable("TestVar3", VarFlags.Number);

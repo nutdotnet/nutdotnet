@@ -451,11 +451,13 @@ namespace NUTDotNetServer
 
             // Note: the value appended to STRING: should be the *max* length, not current length.
             if (upsVar.Flags.HasFlag(VarFlags.String))
+            {
                 retString += " STRING:" + upsVar.Value.Length;
-            else
-                // netget.c: Any variable that is not string | range | enum is just a simple numeric value.
-                retString += " NUMBER";
-
+                return retString;
+            }
+            
+            // netget.c: Any variable that is not string | range | enum is just a simple numeric value.
+            retString += " NUMBER";
             return retString;
         }
 
