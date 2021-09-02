@@ -253,6 +253,41 @@ namespace Testing
         }
 
         [Fact]
+        public void UpdateFlags()
+        {
+            SetupTestData();
+            ServerUPS testUPS = new ServerUPS("GetTypeTestUPS");
+            UPSVariable testNum = new UPSVariable("testNum", VarFlags.RW | VarFlags.Number);
+            UPSVariable testRWEnum = new UPSVariable("testRWEnum", VarFlags.RW);
+            testRWEnum.Enumerations.Add("firstEnum");
+            testUPS.Variables.Add(testNum);
+            testUPS.Variables.Add(testRWEnum);
+            testFixture.testServer.UPSs.Add(testUPS);
+
+            // Get the variables and verify that they aren't updated yet.
+            ClientUPS clientUPS = testFixture.testClient.GetUPSes()[0];
+            UPSVariable localTestNum = clientUPS.GetVariable("testNum");
+            UPSVariable localTestRWEnum = clientUPS.GetVariable("testRWEnum");
+            Assert.NotEqual(localTestNum.Flags, testNum.Flags);
+            Assert.NotEqual(localTestRWEnum.Flags, testRWEnum.Flags);
+
+            // Update the flags.
+            bool doUpdate = clientUPS.UpdateFlags(ref localTestNum);
+            Assert.True(doUpdate);
+            doUpdate = clientUPS.UpdateFlags(ref localTestRWEnum);
+            Assert.True(doUpdate);
+
+            // Verify the flags are correct.
+            Assert.Equal(localTestNum.Flags, testNum.Flags);
+            Assert.Equal(localTestRWEnum.Flags, localTestRWEnum.Flags);
+
+            // Try updating again to verify that no update was needed.
+            Assert.False(clientUPS.UpdateFlags(ref localTestNum));
+
+            ClearTestData();
+        }
+
+        [Fact]
         public void TestClientTimeout()
         {
             SetupTestData();

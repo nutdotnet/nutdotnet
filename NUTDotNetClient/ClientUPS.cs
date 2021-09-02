@@ -267,16 +267,14 @@ namespace NUTDotNetClient
             for (int i = 3; i <= response.Length - 1; i++)
             {
                 VarFlags parsedFlag = VarFlags.None;
-                // Try to parse out a flag. If that fails...
-                if (!Enum.TryParse<VarFlags>(response[i], out parsedFlag))
-                {
-                    // ...check to see if it's the string type. We don't care about the length (for now)
-                    if (response[i].StartsWith("STRING:"))
-                        parsedFlag = VarFlags.String;
-                    // If all else fails, then let the caller deal with it.
-                    else
-                        throw new Exception("Unexpected type while parsing response from server: " + response[i]);
-                }
+                // Match the flag
+                if (response[i].Equals("RW"))
+                    parsedFlag = VarFlags.RW;
+                if (response[i].Equals("NUMBER"))
+                    parsedFlag = VarFlags.Number;
+                // We don't care about string length for now.
+                if (response[i].StartsWith("STRING"))
+                    parsedFlag = VarFlags.String;
 
                 // Combine parsed flag into our new flag.
                 newFlags |= parsedFlag;
