@@ -148,16 +148,33 @@ namespace Testing
         }
 
         [Fact]
+        public void TestGetNumLogins()
+        {
+            SetupTestData();
+
+            testFixture.testServer.UPSs.Add(new ServerUPS("NumLoginsUPS"));
+            Assert.Equal(0, testFixture.testClient.GetUPSes()[0].GetNumLogins());
+
+            testFixture.testClient.SetUsername("user");
+            testFixture.testClient.SetPassword("pass");
+            testFixture.testClient.GetUPSes()[0].Login();
+            Assert.True(testFixture.testClient.GetUPSes()[0].IsLoggedIn);
+            Assert.Equal(1, testFixture.testClient.GetUPSes()[0].GetNumLogins());
+
+            ClearTestData();
+        }
+
+        [Fact]
         public void TestBadInstCmdsQuery()
         {
             SetupTestData();
             ServerUPS testUPS = new ServerUPS("InstCmdTestUPS");
-            testUPS.Commands.Add("TestCmd", delegate { return; });
+            testUPS.InstantCommands.Add("TestCmd", string.Empty);
             testFixture.testServer.UPSs.Add(testUPS);
             ClientUPS clientUPS = testFixture.testClient.GetUPSes()[0];
 
             // Try running a command that's not in the range of available commands.
-            Assert.Throws<ArgumentOutOfRangeException>(() => clientUPS.DoInstantCommand(1));
+            Assert.Throws<NUTException>(() => clientUPS.DoInstantCommand("FooBar"));
             ClearTestData();
         }
 
@@ -166,11 +183,11 @@ namespace Testing
         {
             SetupTestData();
             ServerUPS testUPS = new ServerUPS("InstCmdTestUPS");
-            testUPS.Commands.Add("TestCmd", delegate { return; });
+            testUPS.InstantCommands.Add("TestCmd", string.Empty);
             testFixture.testServer.UPSs.Add(testUPS);
             ClientUPS clientUPS = testFixture.testClient.GetUPSes()[0];
 
-            clientUPS.DoInstantCommand(0);
+            clientUPS.DoInstantCommand("TestCmd");
             ClearTestData();
         }
 
@@ -179,11 +196,13 @@ namespace Testing
         {
             SetupTestData();
             ServerUPS testUPS = new ServerUPS("SetVarTestUPS");
-            testUPS.Rewritables.Add("testRW", "initialValue");
+            UPSVariable testRW = new UPSVariable("testRW", VarFlags.RW);
+            testRW.Value = "initialValue";
+            testUPS.Variables.Add(testRW);
             testFixture.testServer.UPSs.Add(testUPS);
 
             ClientUPS clientUPS = testFixture.testClient.GetUPSes()[0];
-            Assert.Throws<KeyNotFoundException>(() => clientUPS.SetVariable("badVar", "badVal"));
+            Assert.Throws<NUTException>(() => clientUPS.SetVariable("badVar", "badVal"));
             ClearTestData();
         }
 
@@ -192,13 +211,83 @@ namespace Testing
         {
             SetupTestData();
             ServerUPS testUPS = new ServerUPS("SetVarTestUPS");
-            testUPS.Rewritables.Add("testRW", "initialValue");
+            UPSVariable testRW = new UPSVariable("testRW", VarFlags.RW);
+            testRW.Value = "initialValue";
+            testUPS.Variables.Add(testRW);
             testFixture.testServer.UPSs.Add(testUPS);
 
             ClientUPS clientUPS = testFixture.testClient.GetUPSes()[0];
             clientUPS.SetVariable("testRW", "newValue");
+            UPSVariable compareVar = clientUPS.GetRewritables()[0];
             ClearTestData();
-            Assert.Equal(testUPS.Rewritables["testRW"], clientUPS.GetRewritables()["testRW"]);
+            Assert.Equal("newValue", compareVar.Value);
+        }
+
+        [Fact]
+        public void TestGetVarQuery()
+        {
+            SetupTestData();
+            ServerUPS testUPS = new ServerUPS("GetVarTestUPS");
+            UPSVariable testVar = new UPSVariable("testVar", VarFlags.String);
+            testVar.Value = "initialValue";
+            testUPS.Variables.Add(testVar);
+            testFixture.testServer.UPSs.Add(testUPS);
+
+            ClientUPS clientUPS = testFixture.testClient.GetUPSes()[0];
+            UPSVariable checkVar = clientUPS.GetVariable(testVar.Name);
+
+            Assert.Equal(testVar, checkVar);
+
+            // Modify the value (and description) on the server, see if the client picks it up.
+            UPSVariable newTestVar = new UPSVariable(testVar.Name, testVar.Flags);
+            newTestVar.Value = "newValue";
+            newTestVar.Description = "newDescription";
+            testFixture.testServer.UPSs[0].Variables.Clear();
+            testFixture.testServer.UPSs[0].Variables.Add(newTestVar);
+
+            // This should still be the old value.
+            checkVar = clientUPS.GetVariable(testVar.Name);
+            Assert.Equal(testVar, checkVar);
+            // Now force update.
+            checkVar = clientUPS.GetVariable(testVar.Name, true);
+            Assert.Equal(newTestVar, checkVar);
+
+            ClearTestData();
+        }
+
+        [Fact]
+        public void UpdateFlags()
+        {
+            SetupTestData();
+            ServerUPS testUPS = new ServerUPS("GetTypeTestUPS");
+            UPSVariable testNum = new UPSVariable("testNum", VarFlags.RW | VarFlags.Number);
+            UPSVariable testRWEnum = new UPSVariable("testRWEnum", VarFlags.RW);
+            testRWEnum.Enumerations.Add("firstEnum");
+            testUPS.Variables.Add(testNum);
+            testUPS.Variables.Add(testRWEnum);
+            testFixture.testServer.UPSs.Add(testUPS);
+
+            // Get the variables and verify that they aren't updated yet.
+            ClientUPS clientUPS = testFixture.testClient.GetUPSes()[0];
+            UPSVariable localTestNum = clientUPS.GetVariable("testNum");
+            UPSVariable localTestRWEnum = clientUPS.GetVariable("testRWEnum");
+            Assert.NotEqual(localTestNum.Flags, testNum.Flags);
+            Assert.NotEqual(localTestRWEnum.Flags, testRWEnum.Flags);
+
+            // Update the flags.
+            bool doUpdate = clientUPS.UpdateFlags(ref localTestNum);
+            Assert.True(doUpdate);
+            doUpdate = clientUPS.UpdateFlags(ref localTestRWEnum);
+            Assert.True(doUpdate);
+
+            // Verify the flags are correct.
+            Assert.Equal(localTestNum.Flags, testNum.Flags);
+            Assert.Equal(localTestRWEnum.Flags, localTestRWEnum.Flags);
+
+            // Try updating again to verify that no update was needed.
+            Assert.False(clientUPS.UpdateFlags(ref localTestNum));
+
+            ClearTestData();
         }
 
         [Fact]

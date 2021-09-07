@@ -4,6 +4,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -177,13 +178,8 @@ namespace NUTDotNetServer
                     ClientMetadata newClientMetadata = new ClientMetadata(newClient);
                     clients.TryAdd(newClientMetadata.Ip, newClientMetadata);
                     clientsLastSeen.TryAdd(newClientMetadata.Ip, DateTime.Now);
-                    /*if (ClientTimeout > 0)
-                        clientTimeout = new Timer(TimeoutClient, newClient, ClientTimeout * 1000, Timeout.Infinite);*/
                     Debug.WriteLine("Starting data receiving for client " + newClientMetadata.Ip);
                     Task dataReceiverTask = Task.Run(() => DataReceiver(newClientMetadata), cancellationToken);
-
-                    /*newClient.Close();
-                    clients.TryRemove(newClientMetadata.IpPort, out ClientMetadata clientMetadata);*/
                 }
                 catch (TaskCanceledException)
                 {
@@ -287,26 +283,24 @@ namespace NUTDotNetServer
                 string[] splitLine = readLine.Split();
                 Debug.WriteLine(client.Ip + " says " + readLine);
                 // If the client is not authorized, then any command besides LOGOUT will result in an A.D error.
-                if (!readLine.Equals("LOGOUT") & !isAuthorized)
+                if (!splitLine[0].Equals("LOGOUT") & !isAuthorized)
                 {
                     streamWriter.WriteLine("ERR ACCESS-DENIED");
                 }
                 else
                 {
-                    if (splitLine[0].Equals("LIST") && splitLine.Length > 1)
+                    if (splitLine[0].Equals("VER"))
+                        streamWriter.WriteLine(ServerVersion);
+                    else if (splitLine[0].Equals("NETVER"))
+                        streamWriter.WriteLine(NETVER);
+                    else if (splitLine[0].Equals("GET"))
+                        streamWriter.Write(ParseGetQuery(splitLine));
+                    else if (splitLine[0].Equals("LIST") && splitLine.Length > 1)
                         streamWriter.Write(ParseListQuery(splitLine));
                     else if (splitLine[0].Equals("INSTCMD") && splitLine.Length == 3)
                         streamWriter.Write(DoInstCmd(splitLine[1], splitLine[2]));
                     else if (splitLine[0].Equals("SET") && splitLine.Length == 5)
                         streamWriter.Write(DoSetVar(splitLine[2], splitLine[3], splitLine[4]));
-                    else if (readLine.Equals("VER"))
-                    {
-                        streamWriter.WriteLine(ServerVersion);
-                    }
-                    else if (readLine.Equals("NETVER"))
-                    {
-                        streamWriter.WriteLine(NETVER);
-                    }
                     else if (splitLine[0].Equals("USERNAME"))
                     {
                         if (splitLine.Length != 2 || string.IsNullOrWhiteSpace(splitLine[1]))
@@ -403,11 +397,34 @@ namespace NUTDotNetServer
         {
             try
             {
-                ServerUPS upsObject = GetUPSByName(upsName);
-                if (!upsObject.Rewritables.ContainsKey(varName))
+                UPSVariable upsVar = GetUPSByName(upsName).GetVariableByName(varName);
+                if (upsVar is null)
                     throw new Exception("ERR VAR-NOT-SUPPORTED");
-                upsObject.Rewritables[varName] = value;
+                upsVar.Value = value;
                 return "OK" + NUTCommon.NewLine;
+            }
+            catch (Exception)
+            {
+                return "ERR VAR-NOT-SUPPORTED" + NUTCommon.NewLine;
+            }
+        }
+
+        /// <summary>
+        /// Simulates an Instant Command that a NUT server would run on a UPS. Since this is just a test server,
+        /// the method only searches for the specified command and doesn't actually run anything.
+        /// </summary>
+        /// <param name="upsName"></param>
+        /// <param name="cmdName"></param>
+        /// <returns></returns>
+        private string DoInstCmd(string upsName, string cmdName)
+        {
+            try
+            {
+                ServerUPS upsObject = GetUPSByName(upsName);
+                if (!upsObject.InstantCommands.ContainsKey(cmdName))
+                    return "ERR CMD-NOT-SUPPORTED" + NUTCommon.NewLine;
+                else
+                    return "OK" + NUTCommon.NewLine;
             }
             catch (Exception ex)
             {
@@ -415,15 +432,100 @@ namespace NUTDotNetServer
             }
         }
 
-        private string DoInstCmd(string upsName, string cmdName)
+        /// <summary>
+        /// Construct a string of type(s) that apply to the variable.
+        /// </summary>
+        /// <param name="upsVar"></param>
+        /// <returns></returns>
+        string GetVarType(UPSVariable upsVar)
         {
+            String retString = "";
+            if (upsVar.Flags.HasFlag(VarFlags.RW))
+                retString += " RW";
+
+            if (upsVar.Enumerations.Count > 0)
+                retString += " ENUM";
+
+            if (upsVar.Ranges.Count > 0)
+                retString += " RANGE";
+
+            // Note: the value appended to STRING: should be the *max* length, not current length.
+            if (upsVar.Flags.HasFlag(VarFlags.String))
+            {
+                retString += " STRING:" + upsVar.Value.Length;
+                return retString;
+            }
+            
+            // netget.c: Any variable that is not string | range | enum is just a simple numeric value.
+            retString += " NUMBER";
+            return retString;
+        }
+
+        /// <summary>
+        /// Parses and processes one of the GET queries.
+        /// </summary>
+        /// <param name="splitQuery"></param>
+        /// <returns></returns>
+        string ParseGetQuery(string[] splitQuery)
+        {
+            StringBuilder response = new StringBuilder();
             try
             {
-                ServerUPS upsObject = GetUPSByName(upsName);
-                if (!upsObject.Commands.ContainsKey(cmdName))
-                    throw new Exception("ERR CMD-NOT-SUPPORTED");
-                upsObject.Commands[cmdName].Invoke();
-                return "OK" + NUTCommon.NewLine;
+                string subquery = splitQuery.Length >= 2 ? splitQuery[1] : string.Empty;
+                ServerUPS ups = GetUPSByName(splitQuery[2]);
+                string itemName = splitQuery.Length >= 4 ? splitQuery[3] : string.Empty;
+
+                if (subquery.Equals("NUMLOGINS"))
+                {
+                    response.AppendFormat("NUMLOGINS {0} {1}{2}", ups.Name, ups.Clients.Count, NUTCommon.NewLine);
+                }
+                else if (subquery.Equals("UPSDESC"))
+                {
+                    response.AppendFormat("UPSDESC {0} \"{1}\"{2}", ups.Name, ups.Description, NUTCommon.NewLine);
+                }
+                else if (subquery.Equals("VAR") && splitQuery.Length == 4)
+                {
+                    UPSVariable upsVar = ups.GetVariableByName(itemName);
+                    response.AppendFormat("VAR {0} {1} \"{2}\"{3}", ups.Name, itemName, upsVar.Value, NUTCommon.NewLine);
+                }
+                else if (subquery.Equals("TYPE") && splitQuery.Length == 4)
+                {
+                    UPSVariable upsVar = ups.GetVariableByName(itemName);
+                    string type = GetVarType(upsVar);
+                    response.AppendFormat("TYPE {0} {1}{2}{3}", ups.Name, itemName, type, NUTCommon.NewLine);
+                }
+                else if (subquery.Equals("DESC"))
+                {
+                    UPSVariable upsVar = ups.GetVariableByName(itemName);
+                    string description = string.IsNullOrWhiteSpace(upsVar.Description) ?
+                        "Description unavailable" : upsVar.Description;
+                    response.AppendFormat("DESC {0} {1} \"{2}\"{3}", ups.Name, itemName, description,
+                        NUTCommon.NewLine);
+                }
+                else if (subquery.Equals("CMDDESC"))
+                {
+                    if (!ups.InstantCommands.TryGetValue(itemName, out string description)
+                        || string.IsNullOrEmpty(ups.InstantCommands[itemName]))
+                        description = "Unavailable";
+                    response.AppendFormat("CMDDESC {0} {1} \"{2}\"{3}", ups.Name, itemName, description,
+                        NUTCommon.NewLine);
+                }
+                else
+                    throw new Exception("ERR INVALID-ARGUMENT");
+
+                return response.ToString();
+            }
+            catch (IndexOutOfRangeException)
+            {
+                return "ERR INVALID-ARGUMENT" + NUTCommon.NewLine;
+            }
+            catch (KeyNotFoundException)
+            {
+                return "ERR VAR-NOT-SUPPORTED" + NUTCommon.NewLine;
+            }
+            catch (InvalidOperationException)
+            {
+                return "ERR VAR-NOT-SUPPORTED" + NUTCommon.NewLine;
             }
             catch (Exception ex)
             {
@@ -457,16 +559,16 @@ namespace NUTDotNetServer
                     upsObject = GetUPSByName(upsName);
                     response.AppendFormat("BEGIN LIST {0} {1}{2}", subquery, upsName, NUTCommon.NewLine);
                     if (subquery.Equals("VAR"))
-                        foreach (KeyValuePair<string, string> kvp in upsObject.Variables)
-                            response.AppendFormat("{0} {1} {2} \"{3}\"{4}", subquery, upsObject.Name, kvp.Key,
-                                kvp.Value, NUTCommon.NewLine);
+                        foreach (UPSVariable var in upsObject.GetListOfVariables(AbstractUPS.VarList.Variables))
+                            response.AppendFormat("{0} {1} {2} \"{3}\"{4}", subquery, upsObject.Name, var.Name,
+                                var.Value, NUTCommon.NewLine);
                     else if (subquery.Equals("RW"))
-                        foreach (KeyValuePair<string, string> kvp in upsObject.Rewritables)
-                            response.AppendFormat("{0} {1} {2} \"{3}\"{4}", subquery, upsObject.Name, kvp.Key,
-                                kvp.Value, NUTCommon.NewLine);
+                        foreach (UPSVariable var in upsObject.GetListOfVariables(AbstractUPS.VarList.Rewritables))
+                            response.AppendFormat("{0} {1} {2} \"{3}\"{4}", subquery, upsObject.Name, var.Name,
+                                var.Value, NUTCommon.NewLine);
                     else if (subquery.Equals("CMD"))
-                        foreach (KeyValuePair<string, Action> kvp in upsObject.Commands)
-                            response.AppendFormat("{0} {1} {2}{3}", subquery, upsObject.Name, kvp.Key,
+                        foreach (string var in upsObject.InstantCommands.Keys)
+                            response.AppendFormat("{0} {1} {2}{3}", subquery, upsObject.Name, var,
                                 NUTCommon.NewLine);
                     else if (subquery.Equals("CLIENT"))
                         upsObject.Clients.ForEach(str => response.AppendFormat("{0} {1} {2}{3}", subquery,
