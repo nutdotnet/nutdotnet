@@ -504,8 +504,9 @@ namespace NUTDotNetServer
                 }
                 else if (subquery.Equals("CMDDESC"))
                 {
-                    if (!ups.InstantCommands.TryGetValue(itemName, out string description))
-                        description = "Description unavailable";
+                    if (!ups.InstantCommands.TryGetValue(itemName, out string description)
+                        || string.IsNullOrEmpty(ups.InstantCommands[itemName]))
+                        description = "Unavailable";
                     response.AppendFormat("CMDDESC {0} {1} \"{2}\"{3}", ups.Name, itemName, description,
                         NUTCommon.NewLine);
                 }

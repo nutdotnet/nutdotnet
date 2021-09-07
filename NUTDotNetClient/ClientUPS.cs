@@ -1,6 +1,7 @@
 ﻿using NUTDotNetShared;
 using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 
 namespace NUTDotNetClient
 {
@@ -10,6 +11,8 @@ namespace NUTDotNetClient
     /// </summary>
     public class ClientUPS : AbstractUPS
     {
+        private static Regex matchInsideQuotes = new Regex("\"[^\"]*\"", RegexOptions.Compiled);
+
         /// <summary>
         /// Is the client registered as dependant on this UPS? In case of a power-down event, the NUT server will wait
         /// until this client has logged out before shutting down.
@@ -184,13 +187,27 @@ namespace NUTDotNetClient
             return rewritables;
         }
 
+        /// <summary>
+        /// Completely refreshes all available instant commands and their descriptions.
+        /// </summary>
+        /// <param name="forceUpdate">Perform the refresh, even if the list is already present.</param>
+        /// <returns>The list of instant commands (copy of <see cref="AbstractUPS.InstantCommands"/>)</returns>
         public Dictionary<string, string> GetCommands(bool forceUpdate = false)
         {
             if (forceUpdate || InstantCommands.Count == 0)
             {
                 List<string[]> response = GetListResponse("CMD");
                 InstantCommands = new Dictionary<string, string>();
-                response.ForEach(str => InstantCommands.Add(str[2], string.Empty));
+
+                foreach(string[] line in response)
+                {
+                    string cmdName = line[2];
+                    // Query for the instant command description, take the first response.
+                    string cmdDescResponse = client.SendQuery(string.Format("GET CMDDESC {0} {1}", Name, cmdName))[0];
+                    // Extract the description by using regex to match the quotes, then strip those out too.
+                    string cmdDesc = matchInsideQuotes.Match(cmdDescResponse).Value.Trim('"');
+                    InstantCommands.Add(cmdName, cmdDesc);
+                }
             }
             return InstantCommands;
         }

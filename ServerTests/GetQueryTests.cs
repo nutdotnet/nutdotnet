@@ -143,9 +143,9 @@ namespace ServerMockupTests
             testData.Writer.WriteLine("GET CMDDESC FOO BAR");
             Assert.Equal("ERR UNKNOWN-UPS", testData.Reader.ReadLine());
             testData.Writer.WriteLine("GET CMDDESC " + testUPS1.Name);
-            Assert.Equal("CMDDESC " + testUPS1.Name + "  \"Description unavailable\"", testData.Reader.ReadLine());
+            Assert.Equal("CMDDESC " + testUPS1.Name + "  \"Unavailable\"", testData.Reader.ReadLine());
             testData.Writer.WriteLine("GET CMDDESC " + testUPS1.Name + " foo");
-            Assert.Equal("CMDDESC " + testUPS1.Name + " foo \"Description unavailable\"", testData.Reader.ReadLine());
+            Assert.Equal("CMDDESC " + testUPS1.Name + " foo \"Unavailable\"", testData.Reader.ReadLine());
 
             // Now test a valid query.
 

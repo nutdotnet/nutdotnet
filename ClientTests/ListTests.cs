@@ -74,20 +74,26 @@ namespace Testing
             Assert.All(getVars, var => testVars.Contains(var));
         }
 
+        /// <summary>
+        /// Verify that LIST CMD and GET CMDDESC are working.
+        /// </summary>
         [Fact]
         public void GetUPSCommandsList()
         {
             SetupTestData();
+
             Dictionary<string, string> testVars = new Dictionary<string, string>
             {
                 { "cmdName1", null },
-                { "cmdName2", null },
-                { "cmdName3", null }
+                { "cmdName2", "cmdDesc2" },
+                { "cmdName3", "cmdDesc3" }
             };
             testFixture.testServer.UPSs[0].InstantCommands = testVars;
             Dictionary<string, string> getVars = testFixture.testClient.GetUPSes()[0].GetCommands();
+
             ClearTestData();
-            Assert.All(getVars, var => testVars.ContainsKey(var.Key));
+            Assert.All(getVars, var => Assert.True(testVars.ContainsKey(var.Key) &
+                (testVars.ContainsValue(var.Value) || var.Value.Equals("Unavailable"))));
         }
 
         [Fact]
