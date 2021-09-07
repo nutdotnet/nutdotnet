@@ -5,7 +5,7 @@ A .Net client library for communicating with Network UPS Tools servers.
 [Network UPS Tools](https://networkupstools.org/index.html) is a project dedicated to supporting power devices, such as uninterruptible power supplies. The software is built to control and monitor many features of power devices and provides a common protocol for communicating to other devices across a network.
 
 # What this project does
-Inspired by the [WINNut](https://github.com/gawindx/WinNUT-Client) client, this project intends to create a compliant and efficient .Net library that can be used by any .Net application to communicate with, retrieve data from and send commands to a NUT server managing one or power UPSs. This project is written using the .Net Standard Framework, version 2.0.
+Inspired by the [WINNut](https://github.com/gawindx/WinNUT-Client) client, this project intends to create a compliant and efficient .Net library that can be used by any .Net application to communicate with, retrieve data from and send commands to a NUT server managing one or more UPSs. This project is written using the .Net Standard Framework, version 2.0.
 
 # Current Features
 - Most of the NUT protocol, including
