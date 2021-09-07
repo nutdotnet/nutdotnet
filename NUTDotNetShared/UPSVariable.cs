@@ -63,7 +63,7 @@ namespace NUTDotNetShared
         // The second dimension of the array is a length of 2, representing a min and max of the range.
         public List<Tuple<int, int>> Ranges;
 
-        public UPSVariable(string name, VarFlags flags)
+        public UPSVariable(string name, VarFlags flags = VarFlags.None)
         {
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentException("Name variable cannot be blank or null.");
@@ -81,9 +81,17 @@ namespace NUTDotNetShared
             return Equals(obj as UPSVariable);
         }
 
+        /// <summary>
+        /// Two variables may still be considered identical if at least one of the descriptions is null or empty.
+        /// </summary>
+        /// <param name="obj"></param>
+        /// <returns></returns>
         public bool Equals(UPSVariable obj)
         {
-            return Name == obj.Name && Description == obj.Description && Value == obj.Value && Flags == obj.Flags;
+            return Name == obj.Name && 
+                (Description == obj.Description || String.IsNullOrEmpty(Description) || String.IsNullOrEmpty(obj.Description)) && 
+                Value == obj.Value && 
+                Flags == obj.Flags;
         }
 
         /// <summary>

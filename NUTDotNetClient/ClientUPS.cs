@@ -11,8 +11,6 @@ namespace NUTDotNetClient
     /// </summary>
     public class ClientUPS : AbstractUPS
     {
-        private static Regex matchInsideQuotes = new Regex("\"[^\"]*\"", RegexOptions.Compiled);
-
         /// <summary>
         /// Is the client registered as dependant on this UPS? In case of a power-down event, the NUT server will wait
         /// until this client has logged out before shutting down.
@@ -134,6 +132,7 @@ namespace NUTDotNetClient
                     throw new Exception("Response from NUT server was unexpected or malformed: " + response.ToString());
 
                 returnVar.Value = response[3].Replace("\"", string.Empty);
+                returnVar.Description = GetVariableDescription(returnVar.Name);
             }
 
             Variables.Add(returnVar);
@@ -160,6 +159,7 @@ namespace NUTDotNetClient
                 foreach (string[] str in response)
                 {
                     UPSVariable var = new UPSVariable(str[2], VarFlags.None);
+                    var.Description = GetVariableDescription(var.Name);
                     var.Value = str[3];
                     variables.Add(var);
                 }
@@ -167,6 +167,22 @@ namespace NUTDotNetClient
                 Variables.UnionWith(variables);
             }
             return variables;
+        }
+
+        /// <summary>
+        /// Retrieves the description of a variable from the NUT server.
+        /// </summary>
+        /// <param name="varName"></param>
+        /// <returns></returns>
+        public string GetVariableDescription(string varName)
+        {
+            string[] response = client.SendQuery(string.Format("GET DESC {0} {1}", Name, varName))[0]
+                    .Split(new char[] { ' ' }, 4);
+            if (response.Length != 4 || !response[0].Equals("DESC") || !response[1].Equals(Name) ||
+                    !response[2].Equals(varName))
+                throw new Exception("Response from NUT server was unexpected or malformed: " + response.ToString());
+
+            return response[3].Trim('"');
         }
 
         public List<UPSVariable> GetRewritables(bool forceUpdate = false)
@@ -196,20 +212,28 @@ namespace NUTDotNetClient
         {
             if (forceUpdate || InstantCommands.Count == 0)
             {
+                // Expect a reponse line to look like: CMD <ups name> <cmd name>
                 List<string[]> response = GetListResponse("CMD");
                 InstantCommands = new Dictionary<string, string>();
-
-                foreach(string[] line in response)
-                {
-                    string cmdName = line[2];
-                    // Query for the instant command description, take the first response.
-                    string cmdDescResponse = client.SendQuery(string.Format("GET CMDDESC {0} {1}", Name, cmdName))[0];
-                    // Extract the description by using regex to match the quotes, then strip those out too.
-                    string cmdDesc = matchInsideQuotes.Match(cmdDescResponse).Value.Trim('"');
-                    InstantCommands.Add(cmdName, cmdDesc);
-                }
+                response.ForEach(line => InstantCommands.Add(line[2], GetCommandDescription(line[2])));
             }
             return InstantCommands;
+        }
+
+        /// <summary>
+        /// Retrieves the description of a command from the NUT server.
+        /// </summary>
+        /// <param name="cmdName"></param>
+        /// <returns></returns>
+        public string GetCommandDescription(string cmdName)
+        {
+            string[] response = client.SendQuery(string.Format("GET CMDDESC {0} {1}", Name, cmdName))[0]
+                    .Split(new char[] { ' ' }, 4);
+            if (response.Length != 4 || !response[0].Equals("CMDDESC") || !response[1].Equals(Name) ||
+                    !response[2].Equals(cmdName))
+                throw new Exception("Response from NUT server was unexpected or malformed: " + response.ToString());
+
+            return response[3].Trim('"');
         }
 
         public List<string> GetEnumerations(string enumName, bool forceUpdate = false)

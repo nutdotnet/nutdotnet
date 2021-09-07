@@ -235,13 +235,16 @@ namespace Testing
 
             ClientUPS clientUPS = testFixture.testClient.GetUPSes()[0];
             UPSVariable checkVar = clientUPS.GetVariable(testVar.Name);
+
             Assert.Equal(testVar, checkVar);
 
-            // Modify the value on the server, see that the client picks it up.
+            // Modify the value (and description) on the server, see if the client picks it up.
             UPSVariable newTestVar = new UPSVariable(testVar.Name, testVar.Flags);
             newTestVar.Value = "newValue";
-            testFixture.testServer.UPSs[0].Variables.RemoveWhere(var => var.Name == testVar.Name);
+            newTestVar.Description = "newDescription";
+            testFixture.testServer.UPSs[0].Variables.Clear();
             testFixture.testServer.UPSs[0].Variables.Add(newTestVar);
+
             // This should still be the old value.
             checkVar = clientUPS.GetVariable(testVar.Name);
             Assert.Equal(testVar, checkVar);
