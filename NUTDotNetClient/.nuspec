@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
     <metadata>
         <dependencies>
-            <dependency id="NUTDotNetShared" version="0.1.4-alpha" />
+            <dependency id="NUTDotNetShared" version="0.2.0-alpha" />
         </dependencies>
     </metadata>
 </package>
