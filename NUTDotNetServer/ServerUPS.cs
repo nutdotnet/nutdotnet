@@ -15,13 +15,16 @@ namespace NUTDotNetServer
             set => clients = value;
         }
 
-        public new Dictionary<string, string> InstantCommands;
-
         #endregion
 
         public ServerUPS(string name, string description = null) : base(name, description)
         {
-            InstantCommands = new Dictionary<string, string>();
+            // InstantCommands = new Dictionary<string, string>();
+        }
+
+        public override UPSVariable GetVariable(string varName)
+        {
+            return GetVariableByName(varName);
         }
 
         #region String methods

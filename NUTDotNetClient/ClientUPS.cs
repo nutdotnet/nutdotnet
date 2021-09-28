@@ -105,7 +105,7 @@ namespace NUTDotNetClient
         /// <param name="varName"></param>
         /// <param name="forceUpdate">Get the variable from the NUT server, even if it's stored locally.</param>
         /// <returns></returns>
-        public UPSVariable GetVariable(string varName, bool forceUpdate = false)
+        public UPSVariable GetVariable(string varName, bool forceUpdate)
         {
             UPSVariable returnVar;
             bool variableExists = false;
@@ -139,6 +139,10 @@ namespace NUTDotNetClient
             return returnVar;
         }
 
+        public override UPSVariable GetVariable(string varName)
+        {
+            return GetVariable(varName, false);
+        }
 
         /// <summary>
         /// Gets the variables assigned to this UPS from the server. Note: All variables will have the "None" flag

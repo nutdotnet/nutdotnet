@@ -6,22 +6,58 @@ namespace NUTDotNetShared
 {
     public abstract class AbstractUPS : IEquatable<AbstractUPS>
     {
-        public readonly string Name;
-        public string Description;
-        protected List<string> clients;
-        public HashSet<UPSVariable> Variables;
+        #region Properties
+
         /// <summary>
-        /// Command name and description, if available.
+        /// Name of this UPS. The name should never change during the lifecycle of the object.
         /// </summary>
-        protected Dictionary<string, string> InstantCommands;
+        /// <value>
+        /// The name.
+        /// </value>
+        public string Name
+        {
+            get
+            {
+                return name;
+            }
+        }
+
+        public string Description
+        {
+            get
+            {
+                return description;
+            }
+        }
+
+        public Dictionary<string, string> InstantCommands
+        {
+            get
+            {
+                return instantCommands;
+            }
+        }
+
+        #endregion
+
+        #region Private fields
+
+        // Name should never change during the lifecycle of a UPS.
+        private readonly string name;
+        private readonly string description;
+        protected List<string> clients;
+        private HashSet<UPSVariable> variables;
+        protected Dictionary<string, string> instantCommands;
+
+        #endregion
 
         public AbstractUPS(string name, string description = "Unavailable")
         {
-            Name = name;
-            Description = description;
-            Variables = new HashSet<UPSVariable>();
+            this.name = name;
+            this.description = description;
+            variables = new HashSet<UPSVariable>();
             clients = new List<string>();
-            InstantCommands = new Dictionary<string, string>();
+            instantCommands = new Dictionary<string, string>();
         }
 
         /// <summary>
@@ -29,13 +65,15 @@ namespace NUTDotNetShared
         /// </summary>
         /// <param name="varName"></param>
         /// <returns></returns>
-        public UPSVariable GetVariableByName(string varName)
+        protected UPSVariable GetVariableByName(string varName)
         {
             UPSVariable returnVar;
-            returnVar = Variables.Where(var => var.Name.Equals(varName)).First();
+            returnVar = variables.Where(var => var.Name.Equals(varName)).First();
 
             return returnVar;
         }
+
+        public abstract UPSVariable GetVariable(string varName);
 
         public enum VarList
         {
@@ -52,14 +90,14 @@ namespace NUTDotNetShared
             switch (listType)
             {
                 case VarList.Variables:
-                    return Variables.Where(v => (v.Flags & (VarFlags.Number | VarFlags.String)) != 0);
+                    return variables.Where(v => (v.Flags & (VarFlags.Number | VarFlags.String)) != 0);
                 case VarList.Rewritables:
-                    return Variables.Where(v => v.Flags == VarFlags.RW);
+                    return variables.Where(v => v.Flags == VarFlags.RW);
                 case VarList.Enumerations:
-                    return Variables.Where(
+                    return variables.Where(
                         v => !(v.Enumerations is null) && v.Name.Equals(varName) && v.Enumerations.Count > 0);
                 case VarList.Ranges:
-                    return Variables.Where(v => !(v.Ranges is null) && v.Name.Equals(varName) && v.Ranges.Count > 0);
+                    return variables.Where(v => !(v.Ranges is null) && v.Name.Equals(varName) && v.Ranges.Count > 0);
                 default:
                     throw new ArgumentException("Incorrect list type provided.");
             }
