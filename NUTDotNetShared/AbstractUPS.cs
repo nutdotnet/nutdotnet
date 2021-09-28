@@ -16,26 +16,17 @@ namespace NUTDotNetShared
         /// </value>
         public string Name
         {
-            get
-            {
-                return name;
-            }
+            get => name;
         }
 
         public string Description
         {
-            get
-            {
-                return description;
-            }
+            get => description;
         }
 
         public Dictionary<string, string> InstantCommands
         {
-            get
-            {
-                return instantCommands;
-            }
+            get => instantCommands;
         }
 
         #endregion
@@ -46,7 +37,7 @@ namespace NUTDotNetShared
         private readonly string name;
         private readonly string description;
         protected List<string> clients;
-        private HashSet<UPSVariable> variables;
+        protected HashSet<UPSVariable> variables;
         protected Dictionary<string, string> instantCommands;
 
         #endregion

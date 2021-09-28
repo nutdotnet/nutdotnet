@@ -113,7 +113,7 @@ namespace NUTDotNetClient
             try
             {
                 returnVar = GetVariableByName(varName);
-                Variables.Remove(returnVar);
+                variables.Remove(returnVar);
                 variableExists = true;
             }
             catch (InvalidOperationException)
@@ -135,7 +135,7 @@ namespace NUTDotNetClient
                 returnVar.Description = GetVariableDescription(returnVar.Name);
             }
 
-            Variables.Add(returnVar);
+            variables.Add(returnVar);
             return returnVar;
         }
 
@@ -154,23 +154,23 @@ namespace NUTDotNetClient
         /// <returns></returns>
         public List<UPSVariable> GetVariables(bool forceUpdate = false)
         {
-            List<UPSVariable> variables = new List<UPSVariable>(GetListOfVariables(VarList.Variables));
-            if (forceUpdate || variables.Count == 0)
+            List<UPSVariable> varCopy = new List<UPSVariable>(GetListOfVariables(VarList.Variables));
+            if (forceUpdate || varCopy.Count == 0)
             {
                 // Remove any duplicate variables from the set first.
-                Variables.ExceptWith(variables);
+                variables.ExceptWith(varCopy);
                 List<string[]> response = GetListResponse("VAR");
                 foreach (string[] str in response)
                 {
                     UPSVariable var = new UPSVariable(str[2], VarFlags.None);
                     var.Description = GetVariableDescription(var.Name);
                     var.Value = str[3];
-                    variables.Add(var);
+                    varCopy.Add(var);
                 }
                 // Now add the updated list of variables back in.
-                Variables.UnionWith(variables);
+                variables.UnionWith(varCopy);
             }
-            return variables;
+            return varCopy;
         }
 
         /// <summary>
@@ -194,7 +194,7 @@ namespace NUTDotNetClient
             List<UPSVariable> rewritables = new List<UPSVariable>(GetListOfVariables(VarList.Rewritables));
             if (forceUpdate || rewritables.Count == 0)
             {
-                Variables.ExceptWith(rewritables);
+                variables.ExceptWith(rewritables);
                 List<string[]> response = GetListResponse("RW");
                 foreach (string[] str in response)
                 {
@@ -202,7 +202,7 @@ namespace NUTDotNetClient
                     var.Value = str[3];
                     rewritables.Add(var);
                 }
-                Variables.UnionWith(rewritables);
+                variables.UnionWith(rewritables);
             }
             return rewritables;
         }
@@ -218,7 +218,7 @@ namespace NUTDotNetClient
             {
                 // Expect a reponse line to look like: CMD <ups name> <cmd name>
                 List<string[]> response = GetListResponse("CMD");
-                InstantCommands = new Dictionary<string, string>();
+                instantCommands = new Dictionary<string, string>();
                 response.ForEach(line => InstantCommands.Add(line[2], GetCommandDescription(line[2])));
             }
             return InstantCommands;

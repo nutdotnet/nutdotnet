@@ -397,7 +397,7 @@ namespace NUTDotNetServer
         {
             try
             {
-                UPSVariable upsVar = GetUPSByName(upsName).GetVariableByName(varName);
+                UPSVariable upsVar = GetUPSByName(upsName).GetVariable(varName);
                 if (upsVar is null)
                     throw new Exception("ERR VAR-NOT-SUPPORTED");
                 upsVar.Value = value;
@@ -485,18 +485,18 @@ namespace NUTDotNetServer
                 }
                 else if (subquery.Equals("VAR") && splitQuery.Length == 4)
                 {
-                    UPSVariable upsVar = ups.GetVariableByName(itemName);
+                    UPSVariable upsVar = ups.GetVariable(itemName);
                     response.AppendFormat("VAR {0} {1} \"{2}\"{3}", ups.Name, itemName, upsVar.Value, NUTCommon.NewLine);
                 }
                 else if (subquery.Equals("TYPE") && splitQuery.Length == 4)
                 {
-                    UPSVariable upsVar = ups.GetVariableByName(itemName);
+                    UPSVariable upsVar = ups.GetVariable(itemName);
                     string type = GetVarType(upsVar);
                     response.AppendFormat("TYPE {0} {1}{2}{3}", ups.Name, itemName, type, NUTCommon.NewLine);
                 }
                 else if (subquery.Equals("DESC"))
                 {
-                    UPSVariable upsVar = ups.GetVariableByName(itemName);
+                    UPSVariable upsVar = ups.GetVariable(itemName);
                     string description = string.IsNullOrWhiteSpace(upsVar.Description) ?
                         "Description unavailable" : upsVar.Description;
                     response.AppendFormat("DESC {0} {1} \"{2}\"{3}", ups.Name, itemName, description,

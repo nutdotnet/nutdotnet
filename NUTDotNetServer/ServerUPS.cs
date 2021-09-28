@@ -9,10 +9,22 @@ namespace NUTDotNetServer
     {
         #region Properties
 
+        public HashSet<UPSVariable> Variables
+        {
+            get => variables;
+            set => variables = value;
+        }
+
         public List<string> Clients
         {
             get => clients;
             set => clients = value;
+        }
+
+        public new Dictionary<string, string> InstantCommands
+        {
+            get => instantCommands;
+            set => value = instantCommands;
         }
 
         #endregion
