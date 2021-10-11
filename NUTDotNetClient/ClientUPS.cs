@@ -11,15 +11,53 @@ namespace NUTDotNetClient
     /// </summary>
     public class ClientUPS : AbstractUPS
     {
+        #region Properties
+
         /// <summary>
         /// Is the client registered as dependant on this UPS? In case of a power-down event, the NUT server will wait
         /// until this client has logged out before shutting down.
         /// </summary>
         public bool IsLoggedIn { get; private set; }
 
-        private readonly NUTClient client;
+        /// <summary>
+        /// Initializes & returns the list of variables from the NUT server, or returns the local copy.
+        /// </summary>
+        public HashSet<ClientVariable> Variables
+        {
+            get
+            {
+                if (variables == null)
+                    variables = GetVariables();
 
-        public ClientUPS(NUTClient client, string name, string description) : base(name, description)
+                return variables;
+            }
+        }
+
+        /// <summary>
+        /// A list of "Instant Commands" that can be run on this UPS.
+        /// </summary>
+        /// <returns>A <see cref="Dictionary{TKey, TValue}"/> of commands by Name, Description</returns>
+        public override Dictionary<string, string> InstantCommands
+        {
+            get
+            {
+                if (instantCommands == null)
+                    instantCommands = GetCommands();
+
+                return instantCommands;
+            }
+        }
+
+        #endregion
+
+        #region Private fields
+
+        private readonly NUTClient client;
+        private new HashSet<ClientVariable> variables;
+
+        #endregion
+
+        internal ClientUPS(NUTClient client, string name, string description) : base(name, description)
         {
             this.client = client;
             IsLoggedIn = false;
@@ -31,51 +69,22 @@ namespace NUTDotNetClient
         /// </summary>
         public void Login()
         {
-            string response = client.SendQuery("LOGIN " + Name)[0];
+            string response = client.nutSocket.SimpleQuery("LOGIN " + Name)[0]; // client.SendQuery("LOGIN " + Name)[0];
             IsLoggedIn = response.Equals("OK");
         }
 
         /// <summary>
         /// Gets the number of clients logged in to this UPS. Uses the GET NUMLOGINS protocol query.
+        /// Protocol responds: NUMLOGINS <upsname> <value>
         /// </summary>
         /// <returns></returns>
         public int GetNumLogins()
         {
-            string response = client.SendQuery("GET NUMLOGINS " + Name)[0];
-            return int.Parse(response.Substring(response.LastIndexOf(" ") + 1));
+            string[] response = client.nutSocket.SimpleQuery("GET NUMLOGINS " + Name);
+            return int.Parse(response[2]);
         }
 
-        /// <summary>
-        /// Sends a LIST query, validates the response and breaks it down for further processing.
-        /// </summary>
-        /// <param name="subquery">The second portion of the LIST query, such as VAR.</param>
-        /// <param name="parameter">The parameter required for RANGE and ENUM subqueries.</param>
-        /// <returns></returns>
-        private List<string[]> GetListResponse(string subquery, string parameter = null)
-        {
-            string query;
-            if (parameter is null)
-                query = string.Format("LIST {0} {1}", subquery, Name);
-            else
-                query = string.Format("LIST {0} {1} {2}", subquery, Name, parameter);
-
-            List<string> response = client.SendQuery(query);
-            if (!response[0].Equals("BEGIN " + query) ||
-                    !response[response.Count - 1].Equals("END " + query))
-                throw new Exception("Malformed header or footer in response from server.");
-            List<string[]> returnList = new List<string[]>(response.Count - 2);
-            for (int i = 1; i <= returnList.Capacity; i++)
-            {
-                // Strip out any double quotes.
-                response[i] = response[i].Replace("\"", string.Empty);
-                string[] splitStr = response[i].Split(' ');
-                if (!splitStr[0].Equals(subquery) && !splitStr[1].Equals(Name) && (!(parameter is null) &&
-                    splitStr[2].Equals(subquery)))
-                    throw new Exception("Unexpected or invalid response from server: " + splitStr.ToString());
-                returnList.Add(splitStr);
-            }
-            return returnList;
-        }
+        
 
         /// <summary>
         /// Sends an INSTCMD query to the NUT server for execution. Throws an error if unsuccessful.
@@ -83,7 +92,7 @@ namespace NUTDotNetClient
         /// <param name="command">The name of the command to be run.</param>
         public void DoInstantCommand(string command)
         {
-            client.SendQuery(string.Format("INSTCMD {0} {1}", Name, command));
+            client.nutSocket.SimpleQuery(string.Format("INSTCMD {0} {1}", Name, command));
         }
 
         /// <summary>
@@ -94,7 +103,7 @@ namespace NUTDotNetClient
         /// <param name="value">The value that this variable should be set to.</param>
         public void SetVariable(string rewritableKey, string value)
         {
-            client.SendQuery(string.Format("SET VAR {0} {1} \"{2}\"", Name, rewritableKey, value));
+            client.nutSocket.SimpleQuery(string.Format("SET VAR {0} {1} \"{2}\"", Name, rewritableKey, value));
             GetRewritables(true);
         }
 
@@ -105,43 +114,44 @@ namespace NUTDotNetClient
         /// <param name="varName"></param>
         /// <param name="forceUpdate">Get the variable from the NUT server, even if it's stored locally.</param>
         /// <returns></returns>
-        public UPSVariable GetVariable(string varName, bool forceUpdate)
+        //public UPSVariable GetVariable(string varName, bool forceUpdate)
+        //{
+        //    UPSVariable returnVar;
+        //    bool variableExists = false;
+
+        //    try
+        //    {
+        //        returnVar = GetVariable(varName);
+        //        variables.Remove(returnVar);
+        //        variableExists = true;
+        //    }
+        //    catch (InvalidOperationException)
+        //    {
+        //        // Should figure out the variable type first so there's no confusion.
+        //        returnVar = new UPSVariable(varName, VarFlags.String);
+        //    }
+
+        //    // If the variable was already in the cache and user does not want a forceUpdate, then return what we have.
+        //    if (forceUpdate || !variableExists)
+        //    {
+        //        string[] response = client.SendQuery(string.Format("GET VAR {0} {1}", Name, varName))[0]
+        //            .Split(new char[] { ' ' }, 4);
+        //        if (response.Length != 4 || !response[0].Equals("VAR") || !response[1].Equals(Name) ||
+        //            !response[2].Equals(varName))
+        //            throw new Exception("Response from NUT server was unexpected or malformed: " + response.ToString());
+
+        //        returnVar.Value = response[3].Replace("\"", string.Empty);
+        //        returnVar.Description = GetVariableDescription(returnVar.Name);
+        //    }
+
+        //    variables.Add(returnVar);
+        //    return returnVar;
+        //}
+
+        public new ClientVariable GetVariable(string varName)
         {
-            UPSVariable returnVar;
-            bool variableExists = false;
-
-            try
-            {
-                returnVar = GetVariableByName(varName);
-                variables.Remove(returnVar);
-                variableExists = true;
-            }
-            catch (InvalidOperationException)
-            {
-                // Should figure out the variable type first so there's no confusion.
-                returnVar = new UPSVariable(varName, VarFlags.String);
-            }
-
-            // If the variable was already in the cache and user does not want a forceUpdate, then return what we have.
-            if (forceUpdate || !variableExists)
-            {
-                string[] response = client.SendQuery(string.Format("GET VAR {0} {1}", Name, varName))[0]
-                    .Split(new char[] { ' ' }, 4);
-                if (response.Length != 4 || !response[0].Equals("VAR") || !response[1].Equals(Name) ||
-                    !response[2].Equals(varName))
-                    throw new Exception("Response from NUT server was unexpected or malformed: " + response.ToString());
-
-                returnVar.Value = response[3].Replace("\"", string.Empty);
-                returnVar.Description = GetVariableDescription(returnVar.Name);
-            }
-
-            variables.Add(returnVar);
-            return returnVar;
-        }
-
-        public override UPSVariable GetVariable(string varName)
-        {
-            return GetVariable(varName, false);
+            // return GetVariable(varName, false);
+            return (ClientVariable) base.GetVariable(varName);
         }
 
         /// <summary>
@@ -152,76 +162,145 @@ namespace NUTDotNetClient
         /// <param name="forceUpdate">Download the list of variables from the server,even if one is cached here.
         /// </param>
         /// <returns></returns>
-        public List<UPSVariable> GetVariables(bool forceUpdate = false)
-        {
-            List<UPSVariable> varCopy = new List<UPSVariable>(GetListOfVariables(VarList.Variables));
-            if (forceUpdate || varCopy.Count == 0)
-            {
-                // Remove any duplicate variables from the set first.
-                variables.ExceptWith(varCopy);
-                List<string[]> response = GetListResponse("VAR");
-                foreach (string[] str in response)
-                {
-                    UPSVariable var = new UPSVariable(str[2], VarFlags.None);
-                    var.Description = GetVariableDescription(var.Name);
-                    var.Value = str[3];
-                    varCopy.Add(var);
-                }
-                // Now add the updated list of variables back in.
-                variables.UnionWith(varCopy);
-            }
-            return varCopy;
-        }
-
-        /// <summary>
-        /// Retrieves the description of a variable from the NUT server.
-        /// </summary>
-        /// <param name="varName"></param>
-        /// <returns></returns>
-        public string GetVariableDescription(string varName)
-        {
-            string[] response = client.SendQuery(string.Format("GET DESC {0} {1}", Name, varName))[0]
-                    .Split(new char[] { ' ' }, 4);
-            if (response.Length != 4 || !response[0].Equals("DESC") || !response[1].Equals(Name) ||
-                    !response[2].Equals(varName))
-                throw new Exception("Response from NUT server was unexpected or malformed: " + response.ToString());
-
-            return response[3].Trim('"');
-        }
+        //public List<UPSVariable> GetVariables(bool forceUpdate = false)
+        //{
+        //    List<UPSVariable> varCopy = new List<UPSVariable>(GetListOfVariables(VarList.Variables));
+        //    if (forceUpdate || varCopy.Count == 0)
+        //    {
+        //        // Remove any duplicate variables from the set first.
+        //        variables.ExceptWith(varCopy);
+        //        List<string[]> response = GetListResponse("VAR");
+        //        foreach (string[] str in response)
+        //        {
+        //            UPSVariable var = new UPSVariable(str[2], VarFlags.None);
+        //            var.Description = GetVariableDescription(var.Name);
+        //            var.Value = str[3];
+        //            varCopy.Add(var);
+        //        }
+        //        // Now add the updated list of variables back in.
+        //        variables.UnionWith(varCopy);
+        //    }
+        //    return varCopy;
+        //}
 
         public List<UPSVariable> GetRewritables(bool forceUpdate = false)
         {
-            List<UPSVariable> rewritables = new List<UPSVariable>(GetListOfVariables(VarList.Rewritables));
-            if (forceUpdate || rewritables.Count == 0)
-            {
-                variables.ExceptWith(rewritables);
-                List<string[]> response = GetListResponse("RW");
-                foreach (string[] str in response)
-                {
-                    UPSVariable var = new UPSVariable(str[2], VarFlags.RW);
-                    var.Value = str[3];
-                    rewritables.Add(var);
-                }
-                variables.UnionWith(rewritables);
-            }
-            return rewritables;
+            //List<UPSVariable> rewritables = new List<UPSVariable>(GetListOfVariables(VarList.Rewritables));
+            //if (forceUpdate || rewritables.Count == 0)
+            //{
+            //    variables.ExceptWith(rewritables);
+            //    List<string[]> response = GetListResponse("RW");
+            //    foreach (string[] str in response)
+            //    {
+            //        UPSVariable var = new UPSVariable(str[2], VarFlags.RW);
+            //        var.Value = str[3];
+            //        rewritables.Add(var);
+            //    }
+            //    variables.UnionWith(rewritables);
+            //}
+            //return rewritables;
+
+            throw new NotImplementedException();
+        }
+
+        public List<string> GetEnumerations(string enumName, bool forceUpdate = false)
+        {
+            //UPSVariable var = null;
+            //try
+            //{
+            //    var = base.GetVariable(enumName);
+            //}
+            //catch (InvalidOperationException)
+            //{
+
+            //}
+
+            //if (forceUpdate || var is null)
+            //{
+            //    var = new UPSVariable(enumName, VarFlags.None);
+            //    List<string[]> response = GetListResponse("ENUM", enumName);
+            //    var.Enumerations = new List<string>(response.Count);
+            //    response.ForEach(str => var.Enumerations.Add(str[3]));
+            //}
+            //return var.Enumerations;
+
+            throw new NotImplementedException();
+        }
+
+        public List<Tuple<int, int>> GetRanges(string rangeName, bool forceUpdate = false)
+        {
+            //UPSVariable var = null;
+            //try
+            //{
+            //    var = base.GetVariable(rangeName);
+            //}
+            //catch (InvalidOperationException)
+            //{
+
+            //}
+
+            //if (forceUpdate || var is null)
+            //{
+            //    var = new UPSVariable(rangeName, VarFlags.None);
+            //    List<string[]> response = GetListResponse("RANGE", rangeName);
+            //    var.Ranges = new List<Tuple<int, int>>(response.Count);
+            //    response.ForEach(str => var.Ranges.Add(new Tuple<int, int>(int.Parse(str[3]), int.Parse(str[4]))));
+            //}
+            //return var.Ranges;
+
+            throw new NotImplementedException();
         }
 
         /// <summary>
-        /// Completely refreshes all available instant commands and their descriptions.
+        /// Returns a list of clients logged in to the UPS. This is not cached locally.
         /// </summary>
-        /// <param name="forceUpdate">Perform the refresh, even if the list is already present.</param>
-        /// <returns>The list of instant commands (copy of <see cref="AbstractUPS.InstantCommands"/>)</returns>
-        public Dictionary<string, string> GetCommands(bool forceUpdate = false)
+        public List<string> GetClients()
         {
-            if (forceUpdate || InstantCommands.Count == 0)
+            List<string[]> response = client.nutSocket.ListQuery("CLIENT", Name);
+            clients = new List<string>();
+            response.ForEach(str => clients.Add(str[2]));
+
+            return clients;
+        }
+
+        #region Private methods
+
+        /// <summary>
+        /// Gets the list of variables from the NUT server.
+        /// </summary>
+        private HashSet<ClientVariable> GetVariables()
+        {
+            HashSet<ClientVariable> returnList = new HashSet<ClientVariable>();
+
+            // Response format: BEGIN LIST VAR <upsname>
+            //                  VAR <upsname> <varname> "<value>"
+            List<string[]> listResponse = client.nutSocket.ListQuery("VAR", Name);
+
+            foreach (string[] str in listResponse)
             {
-                // Expect a reponse line to look like: CMD <ups name> <cmd name>
-                List<string[]> response = GetListResponse("CMD");
-                instantCommands = new Dictionary<string, string>();
-                response.ForEach(line => InstantCommands.Add(line[2], GetCommandDescription(line[2])));
+                ClientVariable var = new ClientVariable(client.nutSocket, this, str[2]);
+                // var.Description = GetVariableDescription(var.Name);
+                var.Value = str[3];
+                returnList.Add(var);
             }
-            return InstantCommands;
+
+            return returnList;
+        }
+
+        /// <summary>
+        /// Retrieves a list of "Instant Commands" available to this UPS from the NUT server.
+        /// </summary>
+        /// <returns>A <see cref="Dictionary{TKey, TValue}"/> of commands by Name, Description</returns>
+        private Dictionary<string, string> GetCommands()
+        {
+            Dictionary<string, string> retList;
+
+            // Expect a reponse line to look like: CMD <ups name> <cmd name>
+            List<string[]> listResponse = client.nutSocket.ListQuery("CMD", Name);
+            retList = new Dictionary<string, string>(listResponse.Count);
+            listResponse.ForEach(line => retList.Add(line[2], GetCommandDescription(line[2])));
+
+            return retList;
         }
 
         /// <summary>
@@ -229,109 +308,16 @@ namespace NUTDotNetClient
         /// </summary>
         /// <param name="cmdName"></param>
         /// <returns></returns>
-        public string GetCommandDescription(string cmdName)
+        private string GetCommandDescription(string cmdName)
         {
-            string[] response = client.SendQuery(string.Format("GET CMDDESC {0} {1}", Name, cmdName))[0]
-                    .Split(new char[] { ' ' }, 4);
+            string[] response = client.nutSocket.SimpleQuery(string.Format("GET CMDDESC {0} {1}", Name, cmdName));
             if (response.Length != 4 || !response[0].Equals("CMDDESC") || !response[1].Equals(Name) ||
                     !response[2].Equals(cmdName))
                 throw new Exception("Response from NUT server was unexpected or malformed: " + response.ToString());
 
-            return response[3].Trim('"');
+            return response[3];
         }
 
-        public List<string> GetEnumerations(string enumName, bool forceUpdate = false)
-        {
-            UPSVariable var = null;
-            try
-            {
-                var = GetVariableByName(enumName);
-            }
-            catch (InvalidOperationException)
-            {
-
-            }
-
-            if (forceUpdate || var is null)
-            {
-                var = new UPSVariable(enumName, VarFlags.None);
-                List<string[]> response = GetListResponse("ENUM", enumName);
-                var.Enumerations = new List<string>(response.Count);
-                response.ForEach(str => var.Enumerations.Add(str[3]));
-            }
-            return var.Enumerations;
-        }
-
-        public List<Tuple<int, int>> GetRanges(string rangeName, bool forceUpdate = false)
-        {
-            UPSVariable var = null;
-            try
-            {
-                var = GetVariableByName(rangeName);
-            }
-            catch (InvalidOperationException)
-            {
-
-            }
-
-            if (forceUpdate || var is null)
-            {
-                var = new UPSVariable(rangeName, VarFlags.None);
-                List<string[]> response = GetListResponse("RANGE", rangeName);
-                var.Ranges = new List<Tuple<int, int>>(response.Count);
-                response.ForEach(str => var.Ranges.Add(new Tuple<int, int>(int.Parse(str[3]), int.Parse(str[4]))));
-            }
-            return var.Ranges;
-        }
-
-        public List<string> GetClients(bool forceUpdate = false)
-        {
-            if (forceUpdate || clients.Count == 0)
-            {
-                List<string[]> response = GetListResponse("CLIENT");
-                clients = new List<string>();
-                response.ForEach(str => clients.Add(str[2]));
-            }
-            return clients;
-        }
-
-        /// <summary>
-        /// Gets the variable flags from the server (GET TYPE ...), and updates them in the local data model.
-        /// </summary>
-        /// <param name="var">A valid locally-represented variable.</param>
-        /// <returns>True if the flags were modified, false if they are the same.</returns>
-        public bool UpdateFlags(ref UPSVariable var)
-        {
-            VarFlags newFlags = VarFlags.None;
-            string[] response = client.SendQuery(string.Format("GET TYPE {0} {1}", Name, var.Name))[0].Split(' ');
-            // Valid response must have more than 3 words, and follow a TYPE ups_name var_name type_1 [type_2] [...] format.
-            if (response.Length < 4 || !response[0].Equals("TYPE") || !response[1].Equals(Name) || !response[2].Equals(var.Name))
-                throw new Exception("Unexpected or invalid response from server: " + response.ToString());
-
-            // We can expect at least one type from the server, begin iterating over what's left.
-            for (int i = 3; i <= response.Length - 1; i++)
-            {
-                VarFlags parsedFlag = VarFlags.None;
-                // Match the flag
-                if (response[i].Equals("RW"))
-                    parsedFlag = VarFlags.RW;
-                if (response[i].Equals("NUMBER"))
-                    parsedFlag = VarFlags.Number;
-                // We don't care about string length for now.
-                if (response[i].StartsWith("STRING"))
-                    parsedFlag = VarFlags.String;
-
-                // Combine parsed flag into our new flag.
-                newFlags |= parsedFlag;
-            }
-
-            if (newFlags != var.Flags)
-            {
-                var.Flags = newFlags;
-                return true;
-            }
-
-            return false;
-        }
+        #endregion
     }
 }

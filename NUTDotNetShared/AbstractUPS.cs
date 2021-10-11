@@ -24,7 +24,7 @@ namespace NUTDotNetShared
             get => description;
         }
 
-        public Dictionary<string, string> InstantCommands
+        public virtual Dictionary<string, string> InstantCommands
         {
             get => instantCommands;
         }
@@ -33,9 +33,8 @@ namespace NUTDotNetShared
 
         #region Private fields
 
-        // Name should never change during the lifecycle of a UPS.
         private readonly string name;
-        private readonly string description;
+        private string description;
         protected List<string> clients;
         protected HashSet<UPSVariable> variables;
         protected Dictionary<string, string> instantCommands;
@@ -56,7 +55,7 @@ namespace NUTDotNetShared
         /// </summary>
         /// <param name="varName"></param>
         /// <returns></returns>
-        protected UPSVariable GetVariableByName(string varName)
+        protected UPSVariable GetVariable(string varName)
         {
             UPSVariable returnVar;
             returnVar = variables.Where(var => var.Name.Equals(varName)).First();
@@ -64,7 +63,7 @@ namespace NUTDotNetShared
             return returnVar;
         }
 
-        public abstract UPSVariable GetVariable(string varName);
+        // public abstract UPSVariable GetVariable(string varName);
 
         public enum VarList
         {

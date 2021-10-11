@@ -25,12 +25,25 @@ namespace NUTDotNetShared
     /// </summary>
     public class UPSVariable
     {
-        private string varValue;
-        private VarFlags flags;
-
         public static readonly int MAX_VALUE_LENGTH = 256;
+
         public readonly string Name;
-        public string Description;
+        protected string description;
+        public List<string> Enumerations;
+        // The second dimension of the array is a length of 2, representing a min and max of the range.
+        public List<Tuple<int, int>> Ranges;
+
+        private string varValue;
+        protected VarFlags flags = VarFlags.None;
+
+        #region Properties
+
+        public virtual string Description
+        {
+            get { return description; }
+            set { description = value; }
+        }
+
         public string Value
         {
             get
@@ -45,7 +58,7 @@ namespace NUTDotNetShared
                     varValue = value;
             }
         }
-        public VarFlags Flags
+        public virtual VarFlags Flags
         {
             get
             {
@@ -59,17 +72,16 @@ namespace NUTDotNetShared
                     flags = value;
             }
         }
-        public List<string> Enumerations;
-        // The second dimension of the array is a length of 2, representing a min and max of the range.
-        public List<Tuple<int, int>> Ranges;
 
-        public UPSVariable(string name, VarFlags flags = VarFlags.None)
+        #endregion
+
+        public UPSVariable(string name)
         {
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentException("Name variable cannot be blank or null.");
 
             Name = name;
-            Flags = flags;
+            // Flags = flags;
             Enumerations = new List<string>();
             Ranges = new List<Tuple<int, int>>();
         }

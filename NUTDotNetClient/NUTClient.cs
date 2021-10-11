@@ -1,14 +1,18 @@
 ﻿using NUTDotNetShared;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Net.Sockets;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace NUTDotNetClient
 {
     public class NUTClient
     {
         #region Properties
+
         public string Host { get; }
         public int Port { get; }
         public string Username { get; private set; }
@@ -17,23 +21,41 @@ namespace NUTDotNetClient
         {
             get
             {
-                if (client is null)
+                if (nutSocket is null)
                     return false;
                 else
-                    return client.Connected;
+                    return nutSocket.Connected;
             }
         }
         public string ServerVersion { get; private set; }
         public string ProtocolVersion { get; private set; }
+
+        /// <summary>
+        /// Handle events that may be thrown by the client.
+        /// </summary>
+        public NUTClientEvents Events { 
+            get
+            {
+                return events;
+            }
+            private set
+            {
+                events = value;
+            }
+        }
+
         #endregion
 
         #region Fields
-        private TcpClient client;
+
         private bool disposed;
-        private StreamWriter streamWriter;
-        private StreamReader streamReader;
         private readonly List<ClientUPS> upses;
+        internal ClientSocket nutSocket;
+        private NUTClientEvents events = new NUTClientEvents();
+
         #endregion
+
+        #region Constructor & Utilities
 
         /// <summary>
         /// Creates an object allowing for communication with a NUT server.
@@ -57,44 +79,44 @@ namespace NUTDotNetClient
         {
             if (disposed)
                 return;
-            
+
             if (disposing)
             {
-                if (!(client is null))
-                    client.Close();
+                Debug.WriteLine("NDN client is disposing...");
+
+                if (IsConnected) Disconnect();
+
+                if (!(nutSocket is null))
+                    nutSocket.Dispose();
             }
 
             disposed = true;
         }
 
+        #endregion
+
+        #region Connection
+
         public void Connect()
         {
-            if (IsConnected)
-                throw new InvalidOperationException("Cannot connect while client is still connected.");
+            nutSocket.Connect();
 
-            client = new TcpClient(Host, Port);
-            streamWriter = new StreamWriter(client.GetStream(), NUTCommon.PROTO_ENCODING)
-            {
-                NewLine = NUTCommon.NewLine,
-                AutoFlush = true
-            };
-            streamReader = new StreamReader(client.GetStream(), NUTCommon.PROTO_ENCODING);
             // Verify that the client is allowed access by attempting to get basic data.
             GetBasicDetails();
+
+            events.HandleServerConnected(this, new EventArgs());
         }
 
         public void Disconnect()
         {
-            if (!IsConnected)
-                throw new InvalidOperationException("Cannot disconnect while client is disconnected.");
-
-            SendQuery("LOGOUT");
             Username = string.Empty;
             Password = string.Empty;
-            streamReader.Close();
-            streamWriter.Close();
-            client.Close();
+
+            nutSocket.Disconnect();
+            events.HandleServerDisconnected(this, new EventArgs());
         }
+
+        #endregion
 
         /// <summary>
         /// Retrieve basic, static details from the NUT server. Also acts to verify that the client is allowed access
@@ -104,14 +126,14 @@ namespace NUTDotNetClient
         {
             try
             {
-                ServerVersion = SendQuery("VER")[0];
-                ProtocolVersion = SendQuery("NETVER")[0];
+                ServerVersion = nutSocket.SimpleQuery("VER")[0];
+                ProtocolVersion = nutSocket.SimpleQuery("NETVER")[0];
             }
             catch (NUTException nutEx)
             {
                 /* Access denied error will be thrown right off the bat if the host isn't allowed.
                 Specify a friendly error and pass along. */
-                if (nutEx.ErrorCode == Response.Error.ACCESSDENIED)
+                if (nutEx.ErrorCode == Response.ResponseStatus.ACCESSDENIED)
                 {
                     throw new Exception(
                         "Access is denied. This host, or username/password may not be allowed to run this command.",
@@ -128,19 +150,16 @@ namespace NUTDotNetClient
         {
             if (forceUpdate || upses.Count == 0)
             {
-                List<string> listUpsResponse = SendQuery("LIST UPS");
-                foreach (string line in listUpsResponse)
+                List<string[]> listUpsResponse = nutSocket.ListQuery("UPS");
+                foreach (string[] line in listUpsResponse)
                 {
-                    if (line.StartsWith("UPS"))
-                    {
-                        // Strip out any extraneous quotes
-                        string strippedLine = line.Replace("\"", string.Empty);
-                        string[] splitLine = strippedLine.Split(new char[] { ' ' }, 3);
-                        upses.Add(new ClientUPS(this, splitLine[1], splitLine[2]));
-                    }
+                    if (line[0].Equals("UPS"))
+                        upses.Add(new ClientUPS(this, line[1], line[2]));
+                    else
+                        throw new Exception("Invalid LIST response line when gathering UPSs:\n" + line.ToString());
                 }
             }
-            
+
             return upses;
         }
 
@@ -154,7 +173,7 @@ namespace NUTDotNetClient
         {
             if (!string.IsNullOrEmpty(Username))
                 throw new InvalidOperationException("Cannot change username after it's set. Reconnect and try again.");
-            string response = SendQuery("USERNAME " + username)[0];
+            string response = nutSocket.SimpleQuery("USERNAME " + username)[0];
             if (response.Equals("OK"))
                 Username = username;
         }
@@ -168,44 +187,9 @@ namespace NUTDotNetClient
         {
             if (!string.IsNullOrEmpty(Password))
                 throw new InvalidOperationException("Cannot change password after it's set. Reconnect and try again.");
-            string response = SendQuery("PASSWORD " + password)[0];
+            string response = nutSocket.SimpleQuery("PASSWORD " + password)[0];
             if (response.Equals("OK"))
                 Password = password;
-        }
-
-        /// <summary>
-        /// Sends a query to the server, then decides how to handle the response. An error will be thrown if necessary.
-        /// </summary>
-        /// <param name="query"></param>
-        /// <returns></returns>
-        public List<string> SendQuery(string query)
-        {
-            if (!IsConnected)
-                throw new Exception("Attempted to send a query while disconnected.");
-
-            streamWriter.WriteLine(query);
-            string readData = streamReader.ReadLine();
-
-            if (readData == null || readData.Equals(String.Empty))
-                throw new ArgumentException("Unexpected null or empty response returned.");
-            if (readData.StartsWith("ERR "))
-            {
-                throw new NUTException(readData, Response.ParseErrorCode(readData));
-            }
-
-            List<string> returnList = new List<string>() { readData };
-            // Multiline response, begin reading in.
-            if (readData.StartsWith("BEGIN"))
-            {
-                while (!readData.StartsWith("END"))
-                {
-                    readData = streamReader.ReadLine();
-                    returnList.Add(readData);
-                }
-                
-            }
-
-            return returnList;
         }
     }
 }
