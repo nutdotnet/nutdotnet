@@ -1,0 +1,26 @@
+﻿//NUT Network protocol 1.2 commands
+SET VAR <upsname> <varname> "<value>"
+GET VAR <upsname> <varname>
+GET TYPE <upsname> <varname>
+GET DESC <upsname> <varname>
+LIST ENUM <upsname> <varname>
+LIST RANGE <upsname> <varname>
+INSTCMD <upsname> <cmdname>
+GET CMDDESC <upsname> <cmdname>
+GET NUMLOGINS <upsname>
+GET UPSDESC <upsname>
+LIST VAR <upsname>
+LIST RW <upsname>
+LIST CMD <upsname>
+LIST CLIENT <device_name>
+LIST UPS
+LOGIN <upsname>
+MASTER <upsname>
+FSD <upsname>
+PASSWORD <password>
+USERNAME <username>
+LOGOUT
+STARTTLS
+HELP
+VER
+NETVER
