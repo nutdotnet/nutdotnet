@@ -1,13 +1,12 @@
 ﻿using System;
 using System.Text;
 using System.Text.RegularExpressions;
+using static NUTDotNetShared.NUTCommon;
 
 namespace NUTDotNetShared
 {
     public class NUTQuery
     {
-        public enum NUTCommand { GET, LIST, SET, INSTCMD, LOGOUT, LOGIN, PASSWORD, USERNAME, MASTER, FSD, STARTTLS, HELP, VER, NETVER }
-
         // Match a set of words (seperated by spaces), handling quoted phrases as one unit.
         public static Regex QUERY_MATCH = new Regex(" (?=(?:[^\"]*\"[^\"]*\")*(?![^\"]*\"))", RegexOptions.Compiled);
 
@@ -29,6 +28,7 @@ namespace NUTDotNetShared
             string[] splitQuery = QUERY_MATCH.Split(query);
             // Count the number of extra words (arguments) proceeding the command.
             int argumentCount = splitQuery.Length - 1;
+            Arguments = new string[argumentCount];
 
             // Parse the Command section. Throw a nicer exception if something goes wrong.
             try
@@ -43,7 +43,6 @@ namespace NUTDotNetShared
             // Move the arguments into the array property.
             if (argumentCount > 0)
             {
-                Arguments = new string[argumentCount];
                 Array.Copy(splitQuery, 1, Arguments, 0, argumentCount);
             }
         }

@@ -55,7 +55,7 @@ namespace NUTDotNetShared
         /// </summary>
         /// <param name="varName"></param>
         /// <returns></returns>
-        protected UPSVariable GetVariable(string varName)
+        public virtual UPSVariable GetVariable(string varName)
         {
             UPSVariable returnVar;
             returnVar = variables.Where(var => var.Name.Equals(varName)).First();

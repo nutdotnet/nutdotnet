@@ -10,7 +10,7 @@ namespace NUTDotNetShared
     /// Represents a single conversation between client and server; a <see cref="NUTQuery"/> followed by a
     /// <see cref="Response"/>
     /// </summary>
-    public abstract class NUTDialog
+    public class NUTDialog
     {
         // public enum NUTSubject { NUMLOGINS, UPSDESC, VAR, TYPE, DESC, CMDDESC, UPS, RW, CMD, ENUM, RANGE, CLIENT }
 
