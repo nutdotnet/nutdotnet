@@ -124,11 +124,13 @@ namespace ServerMockupTests
                 "END LIST VAR SampleUPS\n";
             using DisposableTestData testData = new DisposableTestData(false);
             ServerUPS sampleUPS = new ServerUPS("SampleUPS");
-            UPSVariable sampleVar = new UPSVariable("testvar", VarFlags.String);
+            UPSVariable sampleVar = new UPSVariable("testvar");
             sampleVar.Value = "testval";
+            sampleVar.Flags = VarFlags.String;
             sampleUPS.Variables.Add(sampleVar);
-            sampleVar = new UPSVariable("testrw", VarFlags.RW);
+            sampleVar = new UPSVariable("testrw");
             sampleVar.Value = "testrwval";
+            sampleVar.Flags = VarFlags.RW;
             sampleUPS.Variables.Add(sampleVar);
             testData.Server.UPSs.Add(sampleUPS);
             testData.Writer.WriteLine("LIST VAR " + sampleUPS.Name);
@@ -207,7 +209,7 @@ namespace ServerMockupTests
                 "ENUM SampleUPS testenum \"2\"\nENUM SampleUPS testenum \"3\"\nEND LIST ENUM SampleUPS testenum\n";
             using DisposableTestData testData = new DisposableTestData(true);
             ServerUPS sampleUPS = new ServerUPS("SampleUPS");
-            UPSVariable sampleVar = new UPSVariable("testenum", VarFlags.None);
+            UPSVariable sampleVar = new UPSVariable("testenum");
             sampleVar.Enumerations.AddRange(new string[] { "1", "2", "3" });
             sampleUPS.Variables.Add(sampleVar);
             testData.Server.UPSs.Add(sampleUPS);
@@ -251,7 +253,7 @@ namespace ServerMockupTests
                 "RANGE SampleUPS testrange \"3\" \"4\"\nEND LIST RANGE SampleUPS testrange\n";
             using DisposableTestData testData = new DisposableTestData(true);
             ServerUPS sampleUPS = new ServerUPS("SampleUPS");
-            UPSVariable sampleVar = new UPSVariable("testrange", VarFlags.None);
+            UPSVariable sampleVar = new UPSVariable("testrange");
             sampleVar.Ranges.AddRange(new Tuple<int, int>[] { new Tuple<int, int>(1, 2), new Tuple<int, int>(3, 4) });
             sampleUPS.Variables.Add(sampleVar);
             testData.Server.UPSs.Add(sampleUPS);

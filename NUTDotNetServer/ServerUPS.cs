@@ -36,7 +36,7 @@ namespace NUTDotNetServer
 
         public override UPSVariable GetVariable(string varName)
         {
-            return GetVariableByName(varName);
+            return base.GetVariable(varName);
         }
 
         #region String methods

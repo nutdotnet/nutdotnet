@@ -10,6 +10,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using static NUTDotNetShared.NUTCommon;
 
 namespace NUTDotNetServer
 {
@@ -265,8 +266,9 @@ namespace NUTDotNetServer
                 NewLine = NUTCommon.NewLine
             };
 
-            // Enter into a loop of listening a responding to queries.
+            // Enter into a loop of listening and responding to queries.
             string readLine;
+
             while (client.TcpClient.Connected)
             {
                 if (!client.NetworkStream.DataAvailable)
@@ -276,81 +278,91 @@ namespace NUTDotNetServer
                 }
 
                 readLine = streamReader.ReadLine();
-                clientsLastSeen.AddOrUpdate(client.Ip, DateTime.Now, (key, value) => DateTime.Now);
-                // Remove quotes
-                readLine = readLine.Replace("\"", string.Empty);
-                // Split the query around whitespace characters.
-                string[] splitLine = readLine.Split();
                 Debug.WriteLine(client.Ip + " says " + readLine);
-                // If the client is not authorized, then any command besides LOGOUT will result in an A.D error.
-                if (!splitLine[0].Equals("LOGOUT") & !isAuthorized)
-                {
-                    streamWriter.WriteLine("ERR ACCESS-DENIED");
-                }
-                else
-                {
-                    if (splitLine[0].Equals("VER"))
-                        streamWriter.WriteLine(ServerVersion);
-                    else if (splitLine[0].Equals("NETVER"))
-                        streamWriter.WriteLine(NETVER);
-                    else if (splitLine[0].Equals("GET"))
-                        streamWriter.Write(ParseGetQuery(splitLine));
-                    else if (splitLine[0].Equals("LIST") && splitLine.Length > 1)
-                        streamWriter.Write(ParseListQuery(splitLine));
-                    else if (splitLine[0].Equals("INSTCMD") && splitLine.Length == 3)
-                        streamWriter.Write(DoInstCmd(splitLine[1], splitLine[2]));
-                    else if (splitLine[0].Equals("SET") && splitLine.Length == 5)
-                        streamWriter.Write(DoSetVar(splitLine[2], splitLine[3], splitLine[4]));
-                    else if (splitLine[0].Equals("USERNAME"))
-                    {
-                        if (splitLine.Length != 2 || string.IsNullOrWhiteSpace(splitLine[1]))
-                        {
-                            streamWriter.WriteLine("ERR INVALID-ARGUMENT");
-                            continue;
-                        }
-                        else if (!string.IsNullOrEmpty(sessionUsername))
-                        {
-                            streamWriter.WriteLine("ERR ALREADY-SET-USERNAME");
-                            continue;
-                        }
-                        sessionUsername = splitLine[1];
-                        streamWriter.WriteLine("OK");
-                    }
-                    else if (splitLine[0].Equals("PASSWORD"))
-                    {
-                        if (splitLine.Length != 2 || string.IsNullOrWhiteSpace(splitLine[1]))
-                        {
-                            streamWriter.WriteLine("ERR INVALID-ARGUMENT");
-                            continue;
-                        }
-                        else if (!string.IsNullOrEmpty(sessionPassword))
-                        {
-                            streamWriter.WriteLine("ERR ALREADY-SET-PASSWORD");
-                            continue;
-                        }
-                        sessionPassword = splitLine[1];
-                        streamWriter.WriteLine("OK");
-                    }
-                    else if (splitLine[0].Equals("LOGIN"))
-                    {
-                        if (splitLine.Length != 2 || string.IsNullOrWhiteSpace(splitLine[1]))
-                            streamWriter.WriteLine("ERR INVALID-ARGUMENT");
-                        else if (string.IsNullOrEmpty(sessionUsername) || string.IsNullOrEmpty(sessionPassword))
-                            streamWriter.WriteLine("ERR ACCESS-DENIED");
-                        else
-                            streamWriter.Write(ClientLogin(splitLine[1], client.Ip.ToString()));
+                clientsLastSeen.AddOrUpdate(client.Ip, DateTime.Now, (key, value) => DateTime.Now);
 
-                    }
-                    else if (readLine.Equals("LOGOUT"))
-                    {
-                        streamWriter.Write(ClientLogout(client.Ip.ToString()));
-                        break;
-                    }
+                try
+                {
+                    NUTDialog currentDialog = new NUTDialog(readLine);
+                    NUTCommand command = currentDialog.Query.Command;
+                    string[] arguments = currentDialog.Query.Arguments;
+
+                    // If the client is not authorized, then any command besides LOGOUT will result in an A.D error.
+                    if (!command.Equals(NUTCommand.LOGOUT) & !isAuthorized)
+                        streamWriter.WriteLine("ERR ACCESS-DENIED");
+
                     else
                     {
-                        streamWriter.WriteLine("ERR UNKNOWN-COMMAND");
+                        switch (command)
+                        {
+                            case NUTCommand.VER:
+                                streamWriter.WriteLine(ServerVersion);
+                                break;
+                            case NUTCommand.NETVER:
+                                streamWriter.WriteLine(NETVER);
+                                break;
+                            case NUTCommand.GET:
+                                streamWriter.Write(ParseGetQuery(arguments));
+                                break;
+                            case NUTCommand.LIST: // & arguments > 0
+                                streamWriter.Write(ParseListQuery(arguments));
+                                break;
+                            case NUTCommand.INSTCMD: // & args = 2
+                                streamWriter.Write(DoInstCmd(arguments[0], arguments[1]));
+                                break;
+                            case NUTCommand.SET: // & args = 4
+                                streamWriter.Write(DoSetVar(arguments[0], arguments[1], arguments[2]));
+                                break;
+                            case NUTCommand.USERNAME:
+                                if (arguments.Length != 1 || string.IsNullOrWhiteSpace(arguments[0]))
+                                {
+                                    streamWriter.WriteLine("ERR INVALID-ARGUMENT");
+                                    continue;
+                                }
+                                else if (!string.IsNullOrEmpty(sessionUsername))
+                                {
+                                    streamWriter.WriteLine("ERR ALREADY-SET-USERNAME");
+                                    continue;
+                                }
+                                sessionUsername = arguments[0];
+                                streamWriter.WriteLine("OK");
+                                break;
+                            case NUTCommand.PASSWORD:
+                                if (arguments.Length != 1 || string.IsNullOrWhiteSpace(arguments[0]))
+                                {
+                                    streamWriter.WriteLine("ERR INVALID-ARGUMENT");
+                                    continue;
+                                }
+                                else if (!string.IsNullOrEmpty(sessionPassword))
+                                {
+                                    streamWriter.WriteLine("ERR ALREADY-SET-PASSWORD");
+                                    continue;
+                                }
+                                sessionPassword = arguments[0];
+                                streamWriter.WriteLine("OK");
+                                break;
+                            case NUTCommand.LOGIN:
+                                if (arguments.Length != 1 || string.IsNullOrWhiteSpace(arguments[0]))
+                                    streamWriter.WriteLine("ERR INVALID-ARGUMENT");
+                                else if (string.IsNullOrEmpty(sessionUsername) || string.IsNullOrEmpty(sessionPassword))
+                                    streamWriter.WriteLine("ERR ACCESS-DENIED");
+                                else
+                                    streamWriter.Write(ClientLogin(arguments[0], client.Ip.ToString()));
+                                break;
+                            case NUTCommand.LOGOUT:
+                                streamWriter.Write(ClientLogout(client.Ip.ToString()));
+                                break;
+                            default:
+                                throw new Exception("Unhandled command from client " + client.ToString());
+                        }
                     }
                 }
+
+                catch (ArgumentException)
+                {
+                    streamWriter.WriteLine("ERR UNKNOWN-COMMAND");
+                }
+
                 if (singleQueryMode)
                     break;
             }
@@ -471,9 +483,9 @@ namespace NUTDotNetServer
             StringBuilder response = new StringBuilder();
             try
             {
-                string subquery = splitQuery.Length >= 2 ? splitQuery[1] : string.Empty;
-                ServerUPS ups = GetUPSByName(splitQuery[2]);
-                string itemName = splitQuery.Length >= 4 ? splitQuery[3] : string.Empty;
+                string subquery = splitQuery.Length >= 1 ? splitQuery[0] : string.Empty;
+                ServerUPS ups = GetUPSByName(splitQuery[1]);
+                string itemName = splitQuery.Length >= 3 ? splitQuery[2] : string.Empty;
 
                 if (subquery.Equals("NUMLOGINS"))
                 {
@@ -483,12 +495,12 @@ namespace NUTDotNetServer
                 {
                     response.AppendFormat("UPSDESC {0} \"{1}\"{2}", ups.Name, ups.Description, NUTCommon.NewLine);
                 }
-                else if (subquery.Equals("VAR") && splitQuery.Length == 4)
+                else if (subquery.Equals("VAR") && splitQuery.Length == 3)
                 {
                     UPSVariable upsVar = ups.GetVariable(itemName);
                     response.AppendFormat("VAR {0} {1} \"{2}\"{3}", ups.Name, itemName, upsVar.Value, NUTCommon.NewLine);
                 }
-                else if (subquery.Equals("TYPE") && splitQuery.Length == 4)
+                else if (subquery.Equals("TYPE") && splitQuery.Length == 3)
                 {
                     UPSVariable upsVar = ups.GetVariable(itemName);
                     string type = GetVarType(upsVar);
@@ -519,6 +531,10 @@ namespace NUTDotNetServer
             {
                 return "ERR INVALID-ARGUMENT" + NUTCommon.NewLine;
             }
+            catch (NullReferenceException)
+            {
+                return "ERR INVALID-ARGUMENT" + NUTCommon.NewLine;
+            }
             catch (KeyNotFoundException)
             {
                 return "ERR VAR-NOT-SUPPORTED" + NUTCommon.NewLine;
@@ -542,10 +558,10 @@ namespace NUTDotNetServer
             StringBuilder response = new StringBuilder();
             try
             {
-                string subquery = splitQuery.Length >= 2 ? splitQuery[1] : string.Empty;
-                string upsName = splitQuery.Length >= 3 ? splitQuery[2] : string.Empty;
+                string subquery = splitQuery.Length >= 1 ? splitQuery[0] : string.Empty;
+                string upsName = splitQuery.Length >= 2 ? splitQuery[1] : string.Empty;
                 ServerUPS upsObject;
-                string varName = splitQuery.Length >= 4 ? splitQuery[3] : string.Empty;
+                string varName = splitQuery.Length >= 3 ? splitQuery[2] : string.Empty;
 
                 if (subquery.Equals("UPS"))
                 {

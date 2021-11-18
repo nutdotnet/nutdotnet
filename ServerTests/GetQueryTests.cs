@@ -8,7 +8,7 @@ namespace ServerMockupTests
     {
         DisposableTestData testData;
         ServerUPS testUPS1 = new ServerUPS("TestUPS1", "Test description");
-        UPSVariable testVar = new UPSVariable("TestVar1", VarFlags.String);
+        UPSVariable testVar = new UPSVariable("TestVar1");
 
         public GetQueryTests()
         {
@@ -16,6 +16,7 @@ namespace ServerMockupTests
 
             testVar.Value = "Test var value";
             testVar.Description = "Test description";
+            testVar.Flags = VarFlags.String;
             testUPS1.InstantCommands.Add("Test.instcmd", "Test instcmd desc");
             testUPS1.Variables.Add(testVar);
             testData.Server.UPSs.Add(testUPS1);
@@ -95,15 +96,16 @@ namespace ServerMockupTests
             Assert.Equal("TYPE " + testUPS1.Name + " " + testVar.Name + " STRING:" + testVar.Value.Length,
                 testData.Reader.ReadLine());
 
-            UPSVariable testVar2 = new UPSVariable("TestVar2", VarFlags.None);
+            UPSVariable testVar2 = new UPSVariable("TestVar2");
             testVar2.Enumerations.Add("testEnum");
             testData.Server.UPSs[0].Variables.Add(testVar2);
             testData.Writer.WriteLine("GET TYPE " + testUPS1.Name + " " + testVar2.Name);
             Assert.Equal("TYPE " + testUPS1.Name + " " + testVar2.Name + " ENUM NUMBER",
                 testData.Reader.ReadLine());
 
-            UPSVariable testVar3 = new UPSVariable("TestVar3", VarFlags.Number);
+            UPSVariable testVar3 = new UPSVariable("TestVar3");
             testVar3.Value = "123";
+            testVar3.Flags = VarFlags.Number;
             testData.Server.UPSs[0].Variables.Add(testVar3);
             testData.Writer.WriteLine("GET TYPE " + testUPS1.Name + " " + testVar3.Name);
             Assert.Equal("TYPE " + testUPS1.Name + " " + testVar3.Name + " NUMBER",

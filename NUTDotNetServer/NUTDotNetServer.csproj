@@ -5,9 +5,19 @@
     <Version>0.2</Version>
     <Authors />
     <Company />
-    <AssemblyVersion>0.2.63.21271</AssemblyVersion>
-    <FileVersion>0.2.63.21271</FileVersion>
+    <AssemblyVersion>0.2.77.21322</AssemblyVersion>
+    <FileVersion>0.2.77.21322</FileVersion>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="ServerDialog.cs" />
+    <Compile Remove="ServerQuery.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="ServerDialog.cs" />
+    <None Include="ServerQuery.cs" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\NUTDotNetShared\NUTDotNetShared.csproj" />
