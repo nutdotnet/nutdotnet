@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace NUTDotNetShared
+namespace NUTDotNetShared.Variables
 {
     /// <summary>
     /// Specifies properties of a UPSVariable (state). Multiple flags can be given. String and number are mutually
@@ -14,52 +14,41 @@ namespace NUTDotNetShared
         RW = 1,
         String = 2,
         Number = 4,
-        Immutable = 8
+        Immutable = 8 //Seems to only block server from changing flags later, not much use to a client.
     }
 
     /// <summary>
-    /// Implements a state, or variable from a UPS. A state's value is limited to 256 characters (although the
-    /// UPS C code says this could be made dynamic). A state can have multiple Flags, Enumerations, Ranges,
-    /// and Commands.
+    /// Implements a basic state, or variable from a UPS. A state's value is limited to 256 characters (although the
+    /// UPS C code says this could be made dynamic), and may be a number or string (check <see cref="VarFlags"/>.)
     /// Refer to https://github.com/networkupstools/nut/blob/master/include/extstate.h
-    /// https://github.com/networkupstools/nut/blob/master/include/state.h
     /// </summary>
-    public class BaseVariable
+    public class SimpleUPSVariable<T> : IEquatable<SimpleUPSVariable<T>> where T: IConvertible
     {
         public static readonly int MAX_VALUE_LENGTH = 256;
 
-        public readonly string Name;
-        protected string description;
-        public List<string> Enumerations;
-        // The second dimension of the array is a length of 2, representing a min and max of the range.
-        public List<Tuple<int, int>> Ranges;
+        private VarFlags flags;
+        private T varValue;
 
-        private string varValue;
-        protected VarFlags flags = VarFlags.None;
+        public string Name { get; set; }
+        public string Description { get; set; }
 
-        #region Properties
-
-        public virtual string Description
-        {
-            get { return description; }
-            set { description = value; }
-        }
-
-        public virtual string Value
-        {
+        public T Value {
             get
             {
                 return varValue;
             }
+
             set
             {
-                if (value.Length > MAX_VALUE_LENGTH)
-                    throw new ArgumentOutOfRangeException("Value", "Value cannot be longer than MAX_VALUE_LENGTH.");
-                else
-                    varValue = value;
+                if (value.ToString().Length > MAX_VALUE_LENGTH)
+                    throw new ArgumentOutOfRangeException("Value",
+                        "Value exceeds the maximum allowed length: " + MAX_VALUE_LENGTH);
+
+                varValue = value;
             }
         }
-        public virtual VarFlags Flags
+
+        public VarFlags Flags
         {
             get
             {
@@ -74,24 +63,21 @@ namespace NUTDotNetShared
             }
         }
 
-        #endregion
-
-        public BaseVariable(string name)
+        public SimpleUPSVariable(string name, string description = NUTCommon.NULL_TEXT, VarFlags flags = VarFlags.None)
         {
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentException("Name variable cannot be blank or null.");
 
             Name = name;
-            // Flags = flags;
-            Enumerations = new List<string>();
-            Ranges = new List<Tuple<int, int>>();
+            Description = description;
+            Flags = flags;
         }
 
         #region Base methods
 
         public override bool Equals(object obj)
         {
-            return Equals(obj as BaseVariable);
+            return Equals(obj as SimpleUPSVariable<T>);
         }
 
         /// <summary>
@@ -99,16 +85,17 @@ namespace NUTDotNetShared
         /// </summary>
         /// <param name="obj"></param>
         /// <returns></returns>
-        public bool Equals(BaseVariable obj)
+        public bool Equals(SimpleUPSVariable<T> obj)
         {
-            return Name == obj.Name && 
-                (Description == obj.Description || String.IsNullOrEmpty(Description) || String.IsNullOrEmpty(obj.Description)) && 
-                Value == obj.Value && 
+            return Name == obj.Name &&
+                (Description == obj.Description || String.IsNullOrEmpty(Description) || String.IsNullOrEmpty(obj.Description)) &&
+                Equals(Value, obj.Value) &&
                 Flags == obj.Flags;
         }
 
         /// <summary>
         /// Override hash code. Variable names must be unique, so we're only hashing that.
+        /// Quote from .NET Docs: "You should not assume that equal hash codes imply object equality."
         /// </summary>
         /// <returns></returns>
         public override int GetHashCode()
