@@ -18,17 +18,15 @@ namespace NUTDotNetShared.Variables
     }
 
     /// <summary>
-    /// Implements a state, or variable from a UPS. A state's value is limited to 256 characters (although the
-    /// UPS C code says this could be made dynamic). A state can have multiple Flags, Enumerations, Ranges,
-    /// and Commands.
+    /// Implements a basic state, or variable from a UPS. A state's value is limited to 256 characters (although the
+    /// UPS C code says this could be made dynamic), and may be a number or string (check <see cref="VarFlags"/>.)
     /// Refer to https://github.com/networkupstools/nut/blob/master/include/extstate.h
     /// </summary>
-    class SimpleUPSVariable<T> : IEquatable<SimpleUPSVariable<T>> where T : IConvertible // https://stackoverflow.com/a/8746643/530172
+    public class SimpleUPSVariable<T> : IEquatable<SimpleUPSVariable<T>> where T: IConvertible
     {
         public static readonly int MAX_VALUE_LENGTH = 256;
 
         private VarFlags flags;
-        // An int or string
         private T varValue;
 
         public string Name { get; set; }
@@ -91,7 +89,7 @@ namespace NUTDotNetShared.Variables
         {
             return Name == obj.Name &&
                 (Description == obj.Description || String.IsNullOrEmpty(Description) || String.IsNullOrEmpty(obj.Description)) &&
-                IComparer<T>.Equals(Value, obj.Value) && //Little trick courtesy of https://stackoverflow.com/a/390974/530172
+                Equals(Value, obj.Value) &&
                 Flags == obj.Flags;
         }
 

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using NUTDotNetShared.Variables;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -6,20 +7,26 @@ namespace NUTDotNetShared
 {
     public abstract class AbstractUPS : IEquatable<AbstractUPS>
     {
+        // All types/derivations of UPS variables. Client/server implementation will determine how to make data avail.
+        public HashSet<SimpleUPSVariable<string>> Variables;
+
         public readonly string Name;
         public string Description;
         protected List<string> clients;
-        public HashSet<UPSVariable> Variables;
+
+        // TODO: Phase out old UPSVariable system for new OOP variables above.
+        // public HashSet<UPSVariable> Variables;
         /// <summary>
         /// Command name and description, if available.
         /// </summary>
         protected Dictionary<string, string> InstantCommands;
 
-        public AbstractUPS(string name, string description = "Unavailable")
+        public AbstractUPS(string name, string description = NUTCommon.NULL_TEXT)
         {
             Name = name;
             Description = description;
-            Variables = new HashSet<UPSVariable>();
+            Variables = new HashSet<SimpleUPSVariable<string>>();
+            // Variables = new HashSet<UPSVariable>();
             clients = new List<string>();
             InstantCommands = new Dictionary<string, string>();
         }
@@ -29,12 +36,9 @@ namespace NUTDotNetShared
         /// </summary>
         /// <param name="varName"></param>
         /// <returns></returns>
-        public UPSVariable GetVariableByName(string varName)
+        public SimpleUPSVariable<string> GetVariableByName(string varName)
         {
-            UPSVariable returnVar;
-            returnVar = Variables.Where(var => var.Name.Equals(varName)).First();
-
-            return returnVar;
+            return Variables.Where(var => var.Name.Equals(varName)).First();
         }
 
         public enum VarList
@@ -45,7 +49,7 @@ namespace NUTDotNetShared
             Ranges
         }
 
-        public IEnumerable<UPSVariable> GetListOfVariables(VarList listType, string varName = null)
+        public IEnumerable<SimpleUPSVariable<string>> GetListOfVariables(VarList listType, string varName = null)
         {
             if (listType == (VarList.Enumerations | VarList.Ranges) && string.IsNullOrWhiteSpace(varName))
                 throw new ArgumentNullException("Must provide a variable name for enums or ranges.");
@@ -55,11 +59,11 @@ namespace NUTDotNetShared
                     return Variables.Where(v => (v.Flags & (VarFlags.Number | VarFlags.String)) != 0);
                 case VarList.Rewritables:
                     return Variables.Where(v => v.Flags == VarFlags.RW);
-                case VarList.Enumerations:
-                    return Variables.Where(
-                        v => !(v.Enumerations is null) && v.Name.Equals(varName) && v.Enumerations.Count > 0);
-                case VarList.Ranges:
-                    return Variables.Where(v => !(v.Ranges is null) && v.Name.Equals(varName) && v.Ranges.Count > 0);
+                //case VarList.Enumerations:
+                //    return Variables.Where(
+                //        v => !(v.Enumerations is null) && v.Name.Equals(varName) && v.Enumerations.Count > 0);
+                //case VarList.Ranges:
+                //    return Variables.Where(v => !(v.Ranges is null) && v.Name.Equals(varName) && v.Ranges.Count > 0);
                 default:
                     throw new ArgumentException("Incorrect list type provided.");
             }

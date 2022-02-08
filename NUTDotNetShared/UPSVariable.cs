@@ -22,6 +22,7 @@ namespace NUTDotNetShared
     /// UPS C code says this could be made dynamic). A state can have multiple Flags, Enumerations, Ranges,
     /// and Commands.
     /// Refer to https://github.com/networkupstools/nut/blob/master/include/extstate.h
+    /// https://github.com/networkupstools/nut/blob/master/include/state.h
     /// </summary>
     public class UPSVariable
     {
