@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace NUTDotNetShared
 {
-    public abstract class AbstractUPS : IEquatable<AbstractUPS>
+    public abstract class AbstractUPS<T> : IEquatable<AbstractUPS<T>> where T : BaseVariable
     {
         #region Properties
 
@@ -24,6 +24,11 @@ namespace NUTDotNetShared
             get => description;
         }
 
+        public VariableList<T> Variables
+        {
+            get { return variables; }
+        }
+
         public virtual Dictionary<string, string> InstantCommands
         {
             get => instantCommands;
@@ -36,7 +41,7 @@ namespace NUTDotNetShared
         private readonly string name;
         private string description;
         protected List<string> clients;
-        protected HashSet<UPSVariable> variables;
+        protected VariableList<T> variables;
         protected Dictionary<string, string> instantCommands;
 
         #endregion
@@ -45,7 +50,7 @@ namespace NUTDotNetShared
         {
             this.name = name;
             this.description = description;
-            variables = new HashSet<UPSVariable>();
+            // variables = new VariableList<UPSVariable>();
             clients = new List<string>();
             instantCommands = new Dictionary<string, string>();
         }
@@ -55,13 +60,13 @@ namespace NUTDotNetShared
         /// </summary>
         /// <param name="varName"></param>
         /// <returns></returns>
-        public virtual UPSVariable GetVariable(string varName)
-        {
-            UPSVariable returnVar;
-            returnVar = variables.Where(var => var.Name.Equals(varName)).First();
+        //public virtual UPSVariable GetVariable(string varName)
+        //{
+        //    UPSVariable returnVar;
+        //    returnVar = variables.Where(var => var.Name.Equals(varName)).First();
 
-            return returnVar;
-        }
+        //    return returnVar;
+        //}
 
         // public abstract UPSVariable GetVariable(string varName);
 
@@ -73,29 +78,29 @@ namespace NUTDotNetShared
             Ranges
         }
 
-        public IEnumerable<UPSVariable> GetListOfVariables(VarList listType, string varName = null)
-        {
-            if (listType == (VarList.Enumerations | VarList.Ranges) && string.IsNullOrWhiteSpace(varName))
-                throw new ArgumentNullException("Must provide a variable name for enums or ranges.");
-            switch (listType)
-            {
-                case VarList.Variables:
-                    return variables.Where(v => (v.Flags & (VarFlags.Number | VarFlags.String)) != 0);
-                case VarList.Rewritables:
-                    return variables.Where(v => v.Flags == VarFlags.RW);
-                case VarList.Enumerations:
-                    return variables.Where(
-                        v => !(v.Enumerations is null) && v.Name.Equals(varName) && v.Enumerations.Count > 0);
-                case VarList.Ranges:
-                    return variables.Where(v => !(v.Ranges is null) && v.Name.Equals(varName) && v.Ranges.Count > 0);
-                default:
-                    throw new ArgumentException("Incorrect list type provided.");
-            }
-        }
+        //public IEnumerable<UPSVariable> GetListOfVariables(VarList listType, string varName = null)
+        //{
+        //    if (listType == (VarList.Enumerations | VarList.Ranges) && string.IsNullOrWhiteSpace(varName))
+        //        throw new ArgumentNullException("Must provide a variable name for enums or ranges.");
+        //    switch (listType)
+        //    {
+        //        case VarList.Variables:
+        //            return variables.Where(v => (v.Flags & (VarFlags.Number | VarFlags.String)) != 0);
+        //        case VarList.Rewritables:
+        //            return variables.Where(v => v.Flags == VarFlags.RW);
+        //        case VarList.Enumerations:
+        //            return variables.Where(
+        //                v => !(v.Enumerations is null) && v.Name.Equals(varName) && v.Enumerations.Count > 0);
+        //        case VarList.Ranges:
+        //            return variables.Where(v => !(v.Ranges is null) && v.Name.Equals(varName) && v.Ranges.Count > 0);
+        //        default:
+        //            throw new ArgumentException("Incorrect list type provided.");
+        //    }
+        //}
 
         #region Base methods
 
-        public bool Equals(AbstractUPS obj)
+        public bool Equals(AbstractUPS<T> obj)
         {
             if (obj is null)
                 return false;

@@ -23,7 +23,7 @@ namespace NUTDotNetShared
     /// and Commands.
     /// Refer to https://github.com/networkupstools/nut/blob/master/include/extstate.h
     /// </summary>
-    public class UPSVariable
+    public class BaseVariable
     {
         public static readonly int MAX_VALUE_LENGTH = 256;
 
@@ -44,7 +44,7 @@ namespace NUTDotNetShared
             set { description = value; }
         }
 
-        public string Value
+        public virtual string Value
         {
             get
             {
@@ -75,7 +75,7 @@ namespace NUTDotNetShared
 
         #endregion
 
-        public UPSVariable(string name)
+        public BaseVariable(string name)
         {
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentException("Name variable cannot be blank or null.");
@@ -90,7 +90,7 @@ namespace NUTDotNetShared
 
         public override bool Equals(object obj)
         {
-            return Equals(obj as UPSVariable);
+            return Equals(obj as BaseVariable);
         }
 
         /// <summary>
@@ -98,7 +98,7 @@ namespace NUTDotNetShared
         /// </summary>
         /// <param name="obj"></param>
         /// <returns></returns>
-        public bool Equals(UPSVariable obj)
+        public bool Equals(BaseVariable obj)
         {
             return Name == obj.Name && 
                 (Description == obj.Description || String.IsNullOrEmpty(Description) || String.IsNullOrEmpty(obj.Description)) && 
