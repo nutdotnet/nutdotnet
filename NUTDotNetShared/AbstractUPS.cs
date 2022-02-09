@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace NUTDotNetShared
 {
@@ -26,7 +25,7 @@ namespace NUTDotNetShared
 
         public VariableList<T> Variables
         {
-            get { return variables; }
+            get => variables;
         }
 
         public virtual Dictionary<string, string> InstantCommands
@@ -50,33 +49,18 @@ namespace NUTDotNetShared
         {
             this.name = name;
             this.description = description;
-            // variables = new VariableList<UPSVariable>();
+            variables = new VariableList<T>();
             clients = new List<string>();
             instantCommands = new Dictionary<string, string>();
         }
 
-        /// <summary>
-        /// Returns the first variable/state matching the given name.
-        /// </summary>
-        /// <param name="varName"></param>
-        /// <returns></returns>
-        //public virtual UPSVariable GetVariable(string varName)
+        //public enum VarList
         //{
-        //    UPSVariable returnVar;
-        //    returnVar = variables.Where(var => var.Name.Equals(varName)).First();
-
-        //    return returnVar;
+        //    Variables,
+        //    Rewritables,
+        //    Enumerations,
+        //    Ranges
         //}
-
-        // public abstract UPSVariable GetVariable(string varName);
-
-        public enum VarList
-        {
-            Variables,
-            Rewritables,
-            Enumerations,
-            Ranges
-        }
 
         //public IEnumerable<UPSVariable> GetListOfVariables(VarList listType, string varName = null)
         //{
@@ -104,8 +88,8 @@ namespace NUTDotNetShared
         {
             if (obj is null)
                 return false;
-            return (Name == obj.Name &&
-                Description == obj.Description);
+            return Name.Equals(obj.Name) &&
+                Description.Equals(obj.Description);
         }
 
         public override bool Equals(object obj)

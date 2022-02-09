@@ -14,7 +14,7 @@ namespace NUTDotNetShared
         RW = 1,
         String = 2,
         Number = 4,
-        Immutable = 8
+        Immutable = 8 //Seems to only block server from changing flags later, not much use to a client.
     }
 
     /// <summary>
@@ -31,7 +31,6 @@ namespace NUTDotNetShared
         public readonly string Name;
         protected string description;
         public List<string> Enumerations;
-        // The second dimension of the array is a length of 2, representing a min and max of the range.
         public List<Tuple<int, int>> Ranges;
 
         private string varValue;
@@ -83,8 +82,8 @@ namespace NUTDotNetShared
 
             Name = name;
             // Flags = flags;
-            Enumerations = new List<string>();
-            Ranges = new List<Tuple<int, int>>();
+            // Enumerations = new List<string>();
+            // Ranges = new List<Tuple<int, int>>();
         }
 
         #region Base methods
@@ -95,16 +94,19 @@ namespace NUTDotNetShared
         }
 
         /// <summary>
-        /// Two variables may still be considered identical if at least one of the descriptions is null or empty.
+        /// Compare this variable with another for equality. Note that two variables may still be considered identical
+        /// when one or both of the descriptions is/are null or empty.
         /// </summary>
         /// <param name="obj"></param>
         /// <returns></returns>
         public bool Equals(BaseVariable obj)
         {
-            return Name == obj.Name && 
-                (Description == obj.Description || String.IsNullOrEmpty(Description) || String.IsNullOrEmpty(obj.Description)) && 
-                Value == obj.Value && 
-                Flags == obj.Flags;
+            return Name.Equals(obj.Name) &&
+                (Description.Equals(obj.Description) || String.IsNullOrEmpty(Description) || String.IsNullOrEmpty(obj.Description)) &&
+                Value.Equals(obj.Value) &&
+                Flags.Equals(obj.Flags) &&
+                Enumerations is object && obj.Enumerations is object && Enumerations.Equals(obj.Enumerations) &&
+                Ranges is object && obj.Ranges is object && Ranges.Equals(obj.Ranges);
         }
 
         /// <summary>
